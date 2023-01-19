@@ -10,7 +10,7 @@ class Color(enum.Enum):
 logging.basicConfig(level = logging.INFO)
 
 
-def read_chessboard(image: cv2.Mat) -> list[list[Color]]:
+def read_chessboard(image: cv2.Mat) -> list:
     for i in range(3, 9):
         for j in range(3, 9):
             ret, corners = cv2.findChessboardCorners(image, (i, j), None)
