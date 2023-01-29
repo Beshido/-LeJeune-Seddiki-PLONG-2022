@@ -41,7 +41,7 @@ class Coordinates:
         return f"{self.upperleft}, {self.upperright} ; {self.lowerleft}, {self.lowerright}"
     
     def get_image(self, image: cv2.Mat) -> cv2.Mat:
-        return image[self.upperleft.y:self.lowerright.y, self.upperleft.x:self.lowerright.yg]
+        return image[self.upperleft.y:self.lowerright.y, self.upperleft.x:self.lowerright.y]
 
 class PiecesType(enum.Enum):
     PAWN = 8
