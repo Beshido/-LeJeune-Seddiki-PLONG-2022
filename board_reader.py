@@ -9,15 +9,39 @@ class Color(enum.Enum):
     BLACK = 0
     WHITE = 1
 
-class Coordinates:
-    def __init__(self, x1: int, y1: int, x2: int, y2: int) -> None:
-        self.x1 = x1
-        self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
+class Point:
+    def __init__(self, x: int, y: int) -> None:
+        self.x = int(x)
+        self.y = int(y)
+
+    def __add__(self, point):
+        return Point(self.x + point.x, self.y + point.y)
+    
+    def __sub__(self, point):
+        return Point(self.x - point.x, self.y - point.y)
 
     def __repr__(self) -> str:
-        return f"{self.x1}, {self.y1} ; {self.x2}, {self.y2}"
+        return f"({self.x}, {self.y})"
+
+class Coordinates:
+    def __init__(self, upperleft: Point, upperright: Point, lowerleft: Point, lowerright: Point) -> None:
+        self.upperleft = upperleft
+        self.upperright = upperright
+        self.lowerleft = lowerleft
+        self.lowerright = lowerright
+
+    def __add__(self, coordinate):
+        return Coordinates(self.upperleft + coordinate.upperleft, self.upperright + coordinate.upperright, self.lowerleft + coordinate.lowerleft, self.lowerright + coordinate.lowerright)
+
+    def __sub__(self, coordinate):
+        return Coordinates(self.upperleft - coordinate.upperleft, self.upperright - coordinate.upperright, self.lowerleft - coordinate.lowerleft, self.lowerright - coordinate.lowerright)
+
+
+    def __repr__(self) -> str:
+        return f"{self.upperleft}, {self.upperright} ; {self.lowerleft}, {self.lowerright}"
+    
+    def get_image(self, image: cv2.Mat) -> cv2.Mat:
+        return image[self.upperleft.y:self.lowerright.y, self.upperleft.x:self.lowerright.y]
 
 class PiecesType(enum.Enum):
     PAWN = 8
@@ -55,7 +79,7 @@ def crop_to_square(image: cv2.Mat) -> cv2.Mat:
     return image[y1:y2, x1:x2]
 
 
-def read_chessboard(image: cv2.Mat) -> list[list[Coordinates]]:
+def read_chessboard(image: cv2.Mat) -> list: # list[list[Coordinates]]
     image = crop_to_square(image)
     image_bw = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE, None)
@@ -67,37 +91,27 @@ def read_chessboard(image: cv2.Mat) -> list[list[Coordinates]]:
 
     coordinates = [[]]
     for i in range(len(corners) - 8):
-        
-        x1 = int(corners[i][0][0])
-        y1 = int(corners[i][0][1])
-        x2 = int(corners[i + 8][0][0])
-        y2 = int(corners[i + 8][0][1])
+        upperleft = Point(corners[i][0][0], corners[i][0][1])
+        upperright = Point(corners[i + 1][0][0], corners[i + 1][0][1])
+        lowerleft = Point(corners[i + 7][0][0], corners[i + 7][0][1])
+        lowerright = Point(corners[i + 8][0][0], corners[i + 8][0][1])
 
-        if x1 > x2 or y1 > y2: 
+        if upperleft.x > lowerright.x or upperleft.y > lowerright.y: 
             coordinates.append([])
             continue
 
-        logging.info(f"{i}. Origin point is ({x1}, {y1}). Ending point is ({x2}, {y2}). Image size is {image.shape[1]}x{image.shape[0]}.")
-        coordinates[-1].append(Coordinates(x1, y1, x2, y2))
+        logging.info(f"{i}. Origin point is {upperleft}. Ending point is {lowerright}). Image size is {image.shape[1]}x{image.shape[0]}.")
+        coordinates[-1].append(Coordinates(upperleft, upperright, lowerleft, lowerright))
     
-    # coordonnées extérieures
+    # coordonnées extérieures TODO convertir en vrai coordinates
     for item in coordinates:
         point_first = item[0]
         point_second = item[1]
         point_before_last = item[-2]
         point_last = item[-1]
 
-        x1_offset_first = point_second.x1 - point_first.x1
-        y1_offset_first = point_second.y1 - point_first.y1
-        x2_offset_first = point_second.x2 - point_first.x2
-        y2_offset_first = point_second.y2 - point_first.y2
-        point0 = Coordinates(point_first.x1 - x1_offset_first, point_first.y1 - y1_offset_first, point_first.x2 - x2_offset_first, point_first.y2 - y2_offset_first)
-        
-        x1_offset_last = point_last.x1 - point_before_last.x1
-        y1_offset_last = point_last.y1 - point_before_last.y1
-        x2_offset_last = point_last.x2 - point_before_last.x2
-        y2_offset_last = point_last.y2 - point_before_last.y2
-        point8 = Coordinates(point_last.x1 + x1_offset_last, point_last.y1 + y1_offset_last, point_last.x2 + x2_offset_last, point_last.y2 + y2_offset_last)
+        point0 = point_first - (point_second - point_first)
+        point8 = point_last + (point_last - point_before_last)
 
         item.insert(0, point0)
         item.append(point8)
@@ -109,21 +123,15 @@ def read_chessboard(image: cv2.Mat) -> list[list[Coordinates]]:
         point_before_last = coordinates[-3][i]
         point_last = coordinates[-2][i]
 
-        x1_offset_first = point_second.x1 - point_first.x1
-        y1_offset_first = point_second.y1 - point_first.y1
-        x2_offset_first = point_second.x2 - point_first.x2
-        y2_offset_first = point_second.y2 - point_first.y2
-        point0 = Coordinates(point_first.x1 - x1_offset_first, point_first.y1 - y1_offset_first, point_first.x2 - x2_offset_first, point_first.y2 - y2_offset_first)
-
-        x1_offset_last = point_last.x1 - point_before_last.x1
-        y1_offset_last = point_last.y1 - point_before_last.y1
-        x2_offset_last = point_last.x2 - point_before_last.x2
-        y2_offset_last = point_last.y2 - point_before_last.y2
-        point8 = Coordinates(point_last.x1 + x1_offset_last, point_last.y1 + y1_offset_last, point_last.x2 + x2_offset_last, point_last.y2 + y2_offset_last)
+        point0 = point_first - (point_second - point_first)
+        point8 = point_last + (point_last - point_before_last)
 
         coordinates[0].append(point0)
         coordinates[-1].append(point8)
 
+    for row in coordinates:
+        for coordinate in row:
+            show_image(coordinate.get_image(image))
     return coordinates
 
 def get_pieces_location(image: cv2.Mat) -> list:
