@@ -1,7 +1,10 @@
-import cv2, enum, logging, pprint
+import cv2, enum, logging, matplotlib, pprint
+matplotlib.use('TkAgg')
+from matplotlib import pyplot
 
 CHESSBOARD_SIZE = (7, 7) # taille intérieure d'un échiquier
-DELAY = 2000 # ms
+HIST_THRESHOLD = 5
+CROP_VALUE = 10
 
 logging.basicConfig(level = logging.INFO) # mise en place du logger
 
@@ -20,7 +23,7 @@ class Point:
     def __sub__(self, point):
         return Point(self.x - point.x, self.y - point.y)
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         return f"({self.x}, {self.y})"
 
 class Coordinates:
@@ -29,6 +32,33 @@ class Coordinates:
         self.upperright = upperright
         self.lowerleft = lowerleft
         self.lowerright = lowerright
+    
+    def minX(self) -> int:
+        return min(self.upperleft.x, self.upperright.x, self.lowerleft.x, self.lowerright.x)
+
+    def minX1(self) -> int:
+        return max(self.upperleft.x, self.lowerleft.x) + CROP_VALUE
+    
+    def minX2(self) -> int:
+        return min(self.upperright.x, self.lowerright.x) - CROP_VALUE
+
+    def minY1(self) -> int:
+        return max(self.upperleft.y, self.upperright.y) + CROP_VALUE
+
+    def minY2(self) -> int:
+        return min(self.lowerleft.y, self.lowerright.y) - CROP_VALUE
+
+    def maxX(self) -> int:
+        return max(self.upperleft.x, self.upperright.x, self.lowerleft.x, self.lowerright.x)
+
+    def minY(self) -> int:
+        return min(self.upperleft.y, self.upperright.y, self.lowerleft.y, self.lowerright.y)
+    
+    def maxY(self) -> int:
+        return max(self.upperleft.y, self.upperright.y, self.lowerleft.y, self.lowerright.y)
+
+    def get_image(self, image: cv2.Mat) -> cv2.Mat:
+        return image[self.minY1():self.minY2(), self.minX1():self.minX2()]
 
     def __add__(self, coordinate):
         return Coordinates(self.upperleft + coordinate.upperleft, self.upperright + coordinate.upperright, self.lowerleft + coordinate.lowerleft, self.lowerright + coordinate.lowerright)
@@ -36,12 +66,8 @@ class Coordinates:
     def __sub__(self, coordinate):
         return Coordinates(self.upperleft - coordinate.upperleft, self.upperright - coordinate.upperright, self.lowerleft - coordinate.lowerleft, self.lowerright - coordinate.lowerright)
 
-
-    def __repr__(self) -> str:
-        return f"{self.upperleft}, {self.upperright} ; {self.lowerleft}, {self.lowerright}"
-    
-    def get_image(self, image: cv2.Mat) -> cv2.Mat:
-        return image[self.upperleft.y:self.lowerright.y, self.upperleft.x:self.lowerright.y]
+    def __str__(self) -> str:
+        return f"[ {self.upperleft}, {self.upperright}\n  {self.lowerleft}, {self.lowerright} ]"
 
 class PiecesType(enum.Enum):
     PAWN = 8
@@ -59,11 +85,11 @@ class Board:
     def __init__(self) -> None:
         pass
 
-def show_image(image: cv2.Mat, delay: int = DELAY) -> None:
+def show_image(image: cv2.Mat) -> None:
     if image is None: return
 
     cv2.imshow("show_image", image)
-    cv2.waitKey(delay)
+    cv2.waitKey(2000)
 
 def crop_to_square(image: cv2.Mat) -> cv2.Mat:
     height = image.shape[0]
@@ -77,6 +103,14 @@ def crop_to_square(image: cv2.Mat) -> cv2.Mat:
 
     logging.info(f"Origin point is ({x1}, {y1}). Ending point is ({x2}, {y2}). The size of the square is {size}.")
     return image[y1:y2, x1:x2]
+
+def get_number_peaks(hist: cv2.Mat) -> int:
+    n = 0
+    for i in range(1, len(hist) - 1):
+        value = hist[i][0] - HIST_THRESHOLD
+        if value > hist[i - 1][0] and value > hist[i + 1][0]:
+            n += 1
+    return n
 
 
 def read_chessboard(image: cv2.Mat) -> list: # list[list[Coordinates]]
@@ -129,9 +163,15 @@ def read_chessboard(image: cv2.Mat) -> list: # list[list[Coordinates]]
         coordinates[0].append(point0)
         coordinates[-1].append(point8)
 
+    # affichage
     for row in coordinates:
         for coordinate in row:
-            show_image(coordinate.get_image(image))
+            contrast_image = coordinate.get_image(cv2.blur(cv2.convertScaleAbs(image_bw, alpha = 1.5, beta = 10), (5, 5)))
+
+            hist = cv2.calcHist([contrast_image], [0], None, [256], [0, 256])
+            peak = get_number_peaks(hist)
+            print(f"{coordinate} -> (peaks : {peak})")
+            show_image(contrast_image)
     return coordinates
 
 def get_pieces_location(image: cv2.Mat) -> list:
@@ -141,6 +181,6 @@ def get_pieces_location(image: cv2.Mat) -> list:
 if __name__ == "__main__":
     logging.info("Launching script...")
     image = cv2.imread("img/chessboard-topview/image3.webp")
-    pprint.pprint(read_chessboard(image))
+    read_chessboard(image)
 
     cv2.destroyAllWindows()
