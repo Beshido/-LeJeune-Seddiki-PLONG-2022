@@ -3,8 +3,9 @@ matplotlib.use('TkAgg')
 from matplotlib import pyplot
 
 CHESSBOARD_SIZE = (7, 7) # taille intérieure d'un échiquier
-HIST_THRESHOLD = 5
+HIST_THRESHOLD = 3
 CROP_VALUE = 10
+MIN_PEAKS = 5 # nombre minimum de peak dans l'histogramme pour que la case soit considérée comme remplie
 
 logging.basicConfig(level = logging.INFO) # mise en place du logger
 
@@ -76,10 +77,13 @@ class PiecesType(enum.Enum):
     KNIGHT = 2
     QUEEN = 1
     KING = 1
+    ANY = 0
+    NONE = 0
 
 class Piece:
-    def __init__(self, image: cv2.Mat) -> None:
+    def __init__(self, image: cv2.Mat, type: PiecesType) -> None:
         self.image = image
+        self.type = type
 
 class Board:
     def __init__(self) -> None:
@@ -113,16 +117,18 @@ def get_number_peaks(hist: cv2.Mat) -> int:
     return n
 
 
-def read_chessboard(image: cv2.Mat) -> list: # list[list[Coordinates]]
+def read_chessboard(image_path: str) -> list: # list[list[Coordinates]]
+    image = cv2.imread(image_path)
+    if image is None:
+        raise ValueError("Image can not be None.")
+
     image = crop_to_square(image)
     image_bw = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE, None)
     if not ret:
-        return []
+        raise ValueError("OpenCV2 was unable to find (7, 7) chessboard-like patterns.")
     
     logging.info(f"A chessboard was found.")
-    assert(len(corners) == 49)
-
     coordinates = [[]]
     for i in range(len(corners) - 8):
         upperleft = Point(corners[i][0][0], corners[i][0][1])
@@ -164,15 +170,42 @@ def read_chessboard(image: cv2.Mat) -> list: # list[list[Coordinates]]
         coordinates[-1].append(point8)
 
     # affichage
-    for row in coordinates:
-        for coordinate in row:
-            contrast_image = coordinate.get_image(cv2.blur(cv2.convertScaleAbs(image_bw, alpha = 1.5, beta = 10), (5, 5)))
+    contrast = 0.5
+    brightness = 10
+    blur_factor = (5, 5)
+    dark_white_blur_image = cv2.blur(cv2.convertScaleAbs(image_bw, alpha = contrast, beta = brightness), blur_factor)
+    errors_empty = 0
+    errors_filled = 0
+    peeks = []
+    board = []
+    for x, row in enumerate(coordinates):
+        board.append([])
+        peeks.append([])
+        for y, coordinate in enumerate(row):
+            contrast_image = coordinate.get_image(dark_white_blur_image)
 
             hist = cv2.calcHist([contrast_image], [0], None, [256], [0, 256])
             peak = get_number_peaks(hist)
-            print(f"{coordinate} -> (peaks : {peak})")
-            show_image(contrast_image)
-    return coordinates
+            peeks[-1].append(peak)
+            if (y > 1 and y < 6 and peak >= MIN_PEAKS) or ((y <= 1 or y >= 6) and peak < MIN_PEAKS):
+                if y > 1 and y < 6: 
+                    errors_empty += 1
+                    message = "Devrait être vide mais considéré comme non-vide."
+                else: 
+                    errors_filled += 1
+                    message = "Devrait être non-vide mais considéré comme vide."
+                logging.info(f"ERREUR {x}.{y} -> (peaks : {peak}) ({message})")
+                # show_image(contrast_image)
+
+            else:
+                if peak < MIN_PEAKS:
+                    board[-1].append(Piece(coordinate.get_image(image), PiecesType.NONE))
+                else:
+                    board[-1].append(Piece(coordinate.get_image(image), PiecesType.ANY))
+                                
+    logging.info(f"Faux positifs pour les cases vides : {errors_empty}\nFaux positifs pour les cases non vides : {errors_filled}\nTotal d'erreurs : {errors_empty + errors_filled}")
+    pprint.pprint(peeks)
+    return board
 
 def get_pieces_location(image: cv2.Mat) -> list:
     
@@ -180,7 +213,7 @@ def get_pieces_location(image: cv2.Mat) -> list:
  
 if __name__ == "__main__":
     logging.info("Launching script...")
-    image = cv2.imread("img/chessboard-topview/image3.webp")
+    image = "img/chessboard-topview/image4.jpg"
     read_chessboard(image)
 
     cv2.destroyAllWindows()
