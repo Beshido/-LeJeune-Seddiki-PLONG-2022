@@ -1,2 +1,2 @@
-matplotlib
-opencv-python
+matplotlib    # visionnage de graphe hist
+opencv-python # manipulation d'image
