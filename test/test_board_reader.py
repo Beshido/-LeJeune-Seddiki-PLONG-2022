@@ -1,5 +1,5 @@
 import unittest
-from src.board_reader import read_chessboard, PiecesType
+from src.board_reader import PiecesType, get_cases_coordinates, check_cases_content
 
 def checkboard_test(chessboard: list, paths: list) -> bool:
     
@@ -18,13 +18,14 @@ class TestBoardReader(unittest.TestCase):
             [ True, True, False, False, False, False, True, True ],
         ]
         paths = [
-            "img/chessboard-topview/image1.jpg",
+            "img/chessboard-topview/image1.jpg", # validé
             # "img/chessboard-topview/image2.png",
-            "img/chessboard-topview/image3.webp",
+            "img/chessboard-topview/image3.webp", # validé
             # "img/chessboard-topview/image4.jpg"
         ]
         for path in paths:
-            board = read_chessboard(path)
+            coordinates = get_cases_coordinates(path)
+            board = check_cases_content(path, coordinates)
             for i in range(len(board)):
                 for j in range(len(board[i])):
                     self.assertEqual(initial_chessboard[i][j], board[i][j].filled)
@@ -41,10 +42,13 @@ class TestBoardReader(unittest.TestCase):
             [ True, True, True, True, True, True, True, True ],
         ]
         paths = [
-            "img/chessboard-topview/image5.jpg"
+            "img/chessboard-topview/image5.jpg", # validé
+            # "img/chessboard-topview/image6.jpg",
+            # "img/chessboard-topview/image7.jpg"
         ]
         for path in paths:
-            board = read_chessboard(path)
+            coordinates = get_cases_coordinates(path)
+            board = check_cases_content(path, coordinates)
             for i in range(len(board)):
                 for j in range(len(board[i])):
                     self.assertEqual(initial_chessboard[i][j], board[i][j].filled)

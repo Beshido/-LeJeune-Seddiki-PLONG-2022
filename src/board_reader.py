@@ -1,6 +1,6 @@
-import cv2, enum, logging, matplotlib, pprint
-from matplotlib import pyplot
-matplotlib.use('TkAgg')
+import cv2, enum, logging, matplotlib, pprint, numpy
+# from matplotlib import pyplot
+# matplotlib.use('TkAgg')
 # logging.basicConfig(level = logging.INFO) # mise en place du logger
 
 CHESSBOARD_SIZE = (7, 7) # taille intérieure d'un échiquier
@@ -124,15 +124,14 @@ def get_number_peaks(hist: cv2.Mat) -> int:
             n += 1
     return n
 
-def read_chessboard(image_path: str) -> list: # list[list[Coordinates]]
+def get_cases_coordinates(image_path: str) -> list:
     image = cv2.imread(image_path)
     if image is None:
         raise ValueError(f"The given image path does not exist: '{image_path}'")
 
     image = crop_to_square(image)
     image_bw = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    # image_bw = cv2.convertScaleAbs(image_bw, alpha = 1.5)
-    # show_image(image_bw)
+    show_image(image_bw)
     ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE, None)
     if not ret:
         raise ValueError("OpenCV2 was unable to find (7, 7) chessboard-like patterns.")
@@ -177,41 +176,56 @@ def read_chessboard(image_path: str) -> list: # list[list[Coordinates]]
 
         coordinates[0].append(point0)
         coordinates[-1].append(point8)
+    
+    return coordinates
 
-    # affichage
+def get_cases_coordinates_harris(image_path: str) -> list:
+    img = cv2.imread(image_path)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray = numpy.float32(gray)
+    dst = cv2.cornerHarris(gray, 2, 3, 0.04)
+    #result is dilated for marking the corners, not important
+    dst = cv2.dilate(dst, None)
+    # Threshold for an optimal value, it may vary depending on the image.
+    threshold = 0.7
+    img[dst > threshold * dst.max()] = [0, 0, 255]
+    num_corners = numpy.sum(dst > threshold * dst.max())
+    show_image(img)
+
+def get_cases_coordinates_neural(image: cv2.Mat) -> list:
+    pass
+
+def check_cases_content(image_path: str, coordinates: list) -> list:
+    image = cv2.imread(image_path)
+    if image is None:
+        raise ValueError(f"The given image path does not exist: '{image_path}'")
+
+    image = crop_to_square(image)
     contrast = 0.5
     brightness = 10
     blur_factor = (5, 5)
-    dark_white_blur_image = cv2.blur(cv2.convertScaleAbs(image_bw, alpha = contrast, beta = brightness), blur_factor)
-    errors_empty = 0
-    errors_filled = 0
-    peeks = []
+    modified_image = cv2.blur(cv2.convertScaleAbs(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) , alpha = contrast, beta = brightness), blur_factor)
     board = []
-    for x, row in enumerate(coordinates):
+    for row in coordinates:
         board.append([])
-        peeks.append([])
-        for y, coordinate in enumerate(row):
-            contrast_image = coordinate.get_image(dark_white_blur_image)
+        for coordinate in row:
+            img = coordinate.get_image(modified_image)
 
-            hist = cv2.calcHist([contrast_image], [0], None, [256], [0, 256])
+            hist = cv2.calcHist([img], [0], None, [256], [0, 256])
             peak = get_number_peaks(hist)
-            peeks[-1].append(peak)
             if peak < MIN_PEAKS:
                 board[-1].append(Piece(coordinate.get_image(image), PiecesType.UNKNOWN, False))
             else:
                 board[-1].append(Piece(coordinate.get_image(image), PiecesType.UNKNOWN, True))
                                 
-    logging.info(f"Faux positifs pour les cases vides : {errors_empty} ; Faux positifs pour les cases non vides : {errors_filled} ; Total d'erreurs : {errors_empty + errors_filled}")
-    pprint.pprint(board)
     return board
 
-def get_pieces_location(image: cv2.Mat) -> list:
-    
-    return []
- 
+def chessboard_piece() -> list:
+    pass
+
 if __name__ == "__main__":
     logging.info("Launching script...")
-    image = "img/chessboard-topview/image2.png"
-    read_chessboard(image)
+    image = "img/chessboard-topview/image4.jpg"
+    get_cases_coordinates_harris(image)
 
     cv2.destroyAllWindows()

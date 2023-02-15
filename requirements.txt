@@ -1,2 +1,3 @@
 matplotlib    # visionnage de graphe hist
+numpy         # nécessaire en concordance avec opencv
 opencv-python # manipulation d'image
