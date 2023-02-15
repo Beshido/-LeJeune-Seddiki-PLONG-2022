@@ -6,6 +6,11 @@ export DISPLAY=$(awk '/nameserver / {print $2; exit}' /etc/resolv.conf 2>/dev/nu
 export LIBGL_ALWAYS_INDIRECT=1 # permet d'utiliser les commandes GUI de OpenCV via WSL2 avec VcXsrv
 ```
 
+# Lancer les tests unitaires
+```bash
+python3 -m unittest -v
+``` 
+
 ## Liens intéressants
 * [Convert a physicial chessboard into a digital one](https://tech.bakkenbaeck.com/post/chessvision)
 * [Neural Chessboard](https://github.com/maciejczyzewski/neural-chessboard)

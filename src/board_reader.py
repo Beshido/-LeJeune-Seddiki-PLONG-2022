@@ -1,13 +1,12 @@
 import cv2, enum, logging, matplotlib, pprint
-matplotlib.use('TkAgg')
 from matplotlib import pyplot
+matplotlib.use('TkAgg')
+# logging.basicConfig(level = logging.INFO) # mise en place du logger
 
 CHESSBOARD_SIZE = (7, 7) # taille intérieure d'un échiquier
 HIST_THRESHOLD = 3
 CROP_VALUE = 10
 MIN_PEAKS = 5 # nombre minimum de peak dans l'histogramme pour que la case soit considérée comme remplie
-
-logging.basicConfig(level = logging.INFO) # mise en place du logger
 
 class Color(enum.Enum):
     BLACK = 0
@@ -71,19 +70,28 @@ class Coordinates:
         return f"[ {self.upperleft}, {self.upperright}\n  {self.lowerleft}, {self.lowerright} ]"
 
 class PiecesType(enum.Enum):
-    PAWN = 8
-    ROOK = 2
-    BISHOP = 2
-    KNIGHT = 2
-    QUEEN = 1
+    PAWN = 6
+    ROOK = 5
+    BISHOP = 4
+    KNIGHT = 3
+    QUEEN = 2
     KING = 1
-    ANY = 0
-    NONE = 0
+    UNKNOWN = 0
+
+    def __str__(self) -> str:
+        return self.name
 
 class Piece:
-    def __init__(self, image: cv2.Mat, type: PiecesType) -> None:
+    def __init__(self, image: cv2.Mat, type: PiecesType, filled: bool) -> None:
         self.image = image
         self.type = type
+        self.filled = filled
+
+    def __str__(self) -> str:
+        return str(self.type)
+    
+    def __repr__(self) -> str:
+        return str(self)
 
 class Board:
     def __init__(self) -> None:
@@ -93,7 +101,7 @@ def show_image(image: cv2.Mat) -> None:
     if image is None: return
 
     cv2.imshow("show_image", image)
-    cv2.waitKey(2000)
+    cv2.waitKey(10000)
 
 def crop_to_square(image: cv2.Mat) -> cv2.Mat:
     height = image.shape[0]
@@ -116,14 +124,15 @@ def get_number_peaks(hist: cv2.Mat) -> int:
             n += 1
     return n
 
-
 def read_chessboard(image_path: str) -> list: # list[list[Coordinates]]
     image = cv2.imread(image_path)
     if image is None:
-        raise ValueError("Image can not be None.")
+        raise ValueError(f"The given image path does not exist: '{image_path}'")
 
     image = crop_to_square(image)
     image_bw = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # image_bw = cv2.convertScaleAbs(image_bw, alpha = 1.5)
+    # show_image(image_bw)
     ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE, None)
     if not ret:
         raise ValueError("OpenCV2 was unable to find (7, 7) chessboard-like patterns.")
@@ -187,24 +196,13 @@ def read_chessboard(image_path: str) -> list: # list[list[Coordinates]]
             hist = cv2.calcHist([contrast_image], [0], None, [256], [0, 256])
             peak = get_number_peaks(hist)
             peeks[-1].append(peak)
-            if (y > 1 and y < 6 and peak >= MIN_PEAKS) or ((y <= 1 or y >= 6) and peak < MIN_PEAKS):
-                if y > 1 and y < 6: 
-                    errors_empty += 1
-                    message = "Devrait être vide mais considéré comme non-vide."
-                else: 
-                    errors_filled += 1
-                    message = "Devrait être non-vide mais considéré comme vide."
-                logging.info(f"ERREUR {x}.{y} -> (peaks : {peak}) ({message})")
-                # show_image(contrast_image)
-
+            if peak < MIN_PEAKS:
+                board[-1].append(Piece(coordinate.get_image(image), PiecesType.UNKNOWN, False))
             else:
-                if peak < MIN_PEAKS:
-                    board[-1].append(Piece(coordinate.get_image(image), PiecesType.NONE))
-                else:
-                    board[-1].append(Piece(coordinate.get_image(image), PiecesType.ANY))
+                board[-1].append(Piece(coordinate.get_image(image), PiecesType.UNKNOWN, True))
                                 
-    logging.info(f"Faux positifs pour les cases vides : {errors_empty}\nFaux positifs pour les cases non vides : {errors_filled}\nTotal d'erreurs : {errors_empty + errors_filled}")
-    pprint.pprint(peeks)
+    logging.info(f"Faux positifs pour les cases vides : {errors_empty} ; Faux positifs pour les cases non vides : {errors_filled} ; Total d'erreurs : {errors_empty + errors_filled}")
+    pprint.pprint(board)
     return board
 
 def get_pieces_location(image: cv2.Mat) -> list:
@@ -213,7 +211,7 @@ def get_pieces_location(image: cv2.Mat) -> list:
  
 if __name__ == "__main__":
     logging.info("Launching script...")
-    image = "img/chessboard-topview/image4.jpg"
+    image = "img/chessboard-topview/image2.png"
     read_chessboard(image)
 
     cv2.destroyAllWindows()
