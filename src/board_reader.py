@@ -1,6 +1,4 @@
 import cv2, enum, logging, matplotlib, pprint
-from matplotlib import pyplot
-matplotlib.use('TkAgg')
 # logging.basicConfig(level = logging.INFO) # mise en place du logger
 
 CHESSBOARD_SIZE = (7, 7) # taille intérieure d'un échiquier
