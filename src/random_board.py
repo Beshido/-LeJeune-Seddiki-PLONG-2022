@@ -1,18 +1,12 @@
-import chess
 import chess.engine
 import random
 
 board = chess.Board()
-for i in range(random.randint(10, 30)):
+for i in range(random.randint(10, 40)):
     legal_moves = list(board.legal_moves)
     move = random.choice(legal_moves)
     board.push(move)
-if(stockfish.is_fen_valid(board.fen())):
-    print("FEN is valid")
-    random_fen = board.fen()
-else:
-    print("FEN is invalid")
-    random_fen = stockfish.generate_fen()
+random_fen = board.fen()
 
 new_board = chess.Board()
 new_board.set_fen(random_fen)
