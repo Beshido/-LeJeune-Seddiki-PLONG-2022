@@ -3,4 +3,3 @@ opencv-python # manipulation d'image
 chess        # gestion de l'échiquier
 python-chess        # gestion de l'échiquier	
 stockfish    # IA d'échec
-```
