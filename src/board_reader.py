@@ -6,10 +6,6 @@ HIST_THRESHOLD = 3
 CROP_VALUE = 10
 MIN_PEAKS = 5 # nombre minimum de peak dans l'histogramme pour que la case soit considérée comme remplie
 
-class Color(enum.Enum):
-    BLACK = 0
-    WHITE = 1
-
 class Point:
     def __init__(self, x: int, y: int) -> None:
         self.x = int(x)
@@ -23,6 +19,12 @@ class Point:
 
     def __str__(self) -> str:
         return f"({self.x}, {self.y})"
+    
+    def __repr__(self) -> str:
+        return str(self)
+    
+    def __iter__(self):
+        return iter([self.x, self.y])
 
 class Coordinates:
     def __init__(self, upperleft: Point, upperright: Point, lowerleft: Point, lowerright: Point) -> None:
@@ -66,6 +68,9 @@ class Coordinates:
 
     def __str__(self) -> str:
         return f"[ {self.upperleft}, {self.upperright}\n  {self.lowerleft}, {self.lowerright} ]"
+    
+    def __repr__(self) -> str:
+        return str(self)
 
 class PiecesType(enum.Enum):
     PAWN = 6
@@ -99,7 +104,8 @@ def show_image(image: cv2.Mat) -> None:
     if image is None: return
 
     cv2.imshow("show_image", image)
-    cv2.waitKey(10000)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 def crop_to_square(image: cv2.Mat) -> cv2.Mat:
     height = image.shape[0]
@@ -127,12 +133,11 @@ def get_cases_coordinates(image_path: str) -> list:
     if image is None:
         raise ValueError(f"The given image path does not exist: '{image_path}'")
 
-    image = crop_to_square(image)
     image_bw = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     show_image(image_bw)
     ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE, None)
     if not ret:
-        raise ValueError("OpenCV2 was unable to find (7, 7) chessboard-like patterns.")
+        raise ValueError(f"OpenCV2 was unable to find {CHESSBOARD_SIZE} chessboard-like patterns.")
     
     logging.info(f"A chessboard was found.")
     coordinates = [[]]
@@ -149,7 +154,7 @@ def get_cases_coordinates(image_path: str) -> list:
         logging.info(f"{i}. Origin point is {upperleft}. Ending point is {lowerright}). Image size is {image.shape[1]}x{image.shape[0]}.")
         coordinates[-1].append(Coordinates(upperleft, upperright, lowerleft, lowerright))
     
-    # coordonnées extérieures TODO convertir en vrai coordinates
+    # coordonnées extérieures
     for item in coordinates:
         point_first = item[0]
         point_second = item[1]
@@ -190,8 +195,30 @@ def get_cases_coordinates_harris(image_path: str) -> list:
     num_corners = numpy.sum(dst > threshold * dst.max())
     show_image(img)
 
-def get_cases_coordinates_neural(image: cv2.Mat) -> list:
-    pass
+def wrap_image(image: cv2.Mat, coordinates: list) -> cv2.Mat:
+    height = image.shape[0]
+    width = image.shape[1]
+    
+    topleft = list(coordinates[0][0].upperleft)
+    topright = list(coordinates[0][-1].upperright)
+    bottomleft = list(coordinates[-1][0].lowerleft)
+    bottomright = list(coordinates[-1][-1].lowerright)
+
+    pts1 = numpy.float32([topleft, topright, bottomleft, bottomright])
+    pts2 = numpy.float32([(0, 0), (width, 0), (0, height), (width, height)])
+    M = cv2.getPerspectiveTransform(pts1, pts2)
+    dst = cv2.warpPerspective(image, M, (width, height))
+
+    show_image(dst)
+
+    h = height / 8
+    w = width / 8
+    for i in range(8):
+        for j in range(8):
+            c = Coordinates(Point(i * w, j * h), Point((i + 1) * w, j * h), Point(i * w, (j + 1) * h), Point((i + 1) * w, (j + 1) * h))
+            show_image(c.get_image(dst))
+
+    return dst
 
 def check_cases_content(image_path: str, coordinates: list) -> list:
     image = cv2.imread(image_path)
@@ -223,7 +250,5 @@ def chessboard_piece() -> list:
 
 if __name__ == "__main__":
     logging.info("Launching script...")
-    image = "img/chessboard-topview/image4.jpg"
-    get_cases_coordinates_harris(image)
-
-    cv2.destroyAllWindows()
+    image = "img/chessboard-topview/image1.jpg"
+    wrap_image(cv2.imread(image), get_cases_coordinates(image))
