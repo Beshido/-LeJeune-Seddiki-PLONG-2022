@@ -1,0 +1,25 @@
+<19/12/22>
+
+Degorre
+
+Sujet OK
+
+À faire :
+- ajout méthodologie test
+- dates dans le calendrier
+- préciser moyens techniques
+- (et faire fonctionner git avec enseignants dessus)
+
+<15/02/23>
+
+Degorre
+
+Fait :
+- git
+- "parsing" de l'échiquier (depuis image en vue de dessus, pour savoir si un pièce blanche ou noire est présente sur chaque case)
+- intégration IA Python/Stockfish, testé sur configurations valables générées automatiquement
+
+À faire :
+- ajouter objectifs mars-avril (dispositif physique)
+- améliorer "parsing" : plus de configurations possibles (angles, ...) déduire quelle pièce est où (utiliser machine learning + connaissance des règles)
+- export de configuration (provenant notamment du parsing) en fichier exploitable ailleurs
