@@ -32,7 +32,7 @@ class Coordinates:
         self.upperright = upperright
         self.lowerleft = lowerleft
         self.lowerright = lowerright
-    
+
     def minX(self) -> int:
         return min(self.upperleft.x, self.upperright.x, self.lowerleft.x, self.lowerright.x)
 
@@ -72,18 +72,6 @@ class Coordinates:
     def __repr__(self) -> str:
         return str(self)
 
-class PiecesType(enum.Enum):
-    PAWN = 6
-    ROOK = 5
-    BISHOP = 4
-    KNIGHT = 3
-    QUEEN = 2
-    KING = 1
-    UNKNOWN = 0
-
-    def __str__(self) -> str:
-        return self.name
-
 class Piece:
     def __init__(self, image: cv2.Mat, type: PiecesType, filled: bool) -> None:
         self.image = image
@@ -95,10 +83,6 @@ class Piece:
     
     def __repr__(self) -> str:
         return str(self)
-
-class Board:
-    def __init__(self) -> None:
-        pass
 
 def show_image(image: cv2.Mat) -> None:
     if image is None: return
@@ -134,7 +118,6 @@ def get_cases_coordinates(image_path: str) -> list:
         raise ValueError(f"The given image path does not exist: '{image_path}'")
 
     image_bw = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    show_image(image_bw)
     ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE, None)
     if not ret:
         raise ValueError(f"OpenCV2 was unable to find {CHESSBOARD_SIZE} chessboard-like patterns.")
@@ -193,7 +176,7 @@ def get_cases_coordinates_harris(image_path: str) -> list:
     threshold = 0.7
     img[dst > threshold * dst.max()] = [0, 0, 255]
     num_corners = numpy.sum(dst > threshold * dst.max())
-    show_image(img)
+    return num_corners
 
 def wrap_image(image: cv2.Mat, coordinates: list) -> cv2.Mat:
     height = image.shape[0]
@@ -209,16 +192,31 @@ def wrap_image(image: cv2.Mat, coordinates: list) -> cv2.Mat:
     M = cv2.getPerspectiveTransform(pts1, pts2)
     dst = cv2.warpPerspective(image, M, (width, height))
 
-    show_image(dst)
-
     h = height / 8
     w = width / 8
     for i in range(8):
         for j in range(8):
             c = Coordinates(Point(i * w, j * h), Point((i + 1) * w, j * h), Point(i * w, (j + 1) * h), Point((i + 1) * w, (j + 1) * h))
-            show_image(c.get_image(dst))
 
     return dst
+
+def get_cases_color(image: cv2.Mat) -> list:
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    height = image.shape[0] // 8
+    width = image.shape[1] // 8
+    blur = cv2.GaussianBlur(image, (5, 5), 0)
+    retval, image_binary = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    show_image(image_binary)
+    x = 0
+    y = 0
+    for _ in range(7):
+        for _ in range(7):
+            c = Coordinates(Point(x, y), Point(x + width, y), Point(x, y + height), Point(x + width, y + height))
+            show_image(c.get_image(image_binary))
+            y += height
+        x += width
+        y = 0
+    return []
 
 def check_cases_content(image_path: str, coordinates: list) -> list:
     image = cv2.imread(image_path)
@@ -250,5 +248,9 @@ def chessboard_piece() -> list:
 
 if __name__ == "__main__":
     logging.info("Launching script...")
-    image = "img/chessboard-topview/image1.jpg"
-    wrap_image(cv2.imread(image), get_cases_coordinates(image))
+    image = "img/chessboard-topview/image3.webp"
+    try: 
+        coordinates = get_cases_coordinates(image)
+    except ValueError:
+        coordinates = get_cases_coordinates_harris(image)
+        print(coordinates)
