@@ -14,3 +14,4 @@ python3 -m unittest -v
 ## Liens intéressants
 * [Convert a physicial chessboard into a digital one](https://tech.bakkenbaeck.com/post/chessvision)
 * [Neural Chessboard](https://github.com/maciejczyzewski/neural-chessboard)
+* [chesscog](https://github.com/georg-wolflein/chesscog)
