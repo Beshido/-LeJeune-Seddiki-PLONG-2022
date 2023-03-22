@@ -1,10 +1,9 @@
-import cv2, enum, logging, matplotlib, pprint, numpy
-# logging.basicConfig(level = logging.INFO) # mise en place du logger
+import cv2, enum, logging, matplotlib, pprint, numpy, sys
 
 CHESSBOARD_SIZE = (7, 7) # taille intérieure d'un échiquier
 HIST_THRESHOLD = 3
 CROP_VALUE = 10
-MIN_PEAKS = 5 # nombre minimum de peak dans l'histogramme pour que la case soit considérée comme remplie
+MIN_PEAKS = 10 # nombre minimum de peak dans l'histogramme pour que la case soit considérée comme remplie
 
 class Point:
     def __init__(self, x: int, y: int) -> None:
@@ -79,7 +78,7 @@ class Piece:
         self.filled = filled
 
     def __str__(self) -> str:
-        return str(self.type)
+        return str(self.type) if self.filled else "EMPTY"
     
     def __repr__(self) -> str:
         return str(self)
@@ -112,11 +111,8 @@ def get_number_peaks(hist: cv2.Mat) -> int:
             n += 1
     return n
 
-def get_cases_coordinates(image_path: str) -> list:
-    image = cv2.imread(image_path)
-    if image is None:
-        raise ValueError(f"The given image path does not exist: '{image_path}'")
-
+def get_cases_coordinates(image: cv2.Mat) -> list:
+    """Renvoie une liste de liste de coordonnées de cases d'échiquier via la méthode de findChessboardCornersSB de OpenCV. Efficace pour les images avec une vue de haut."""
     image_bw = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE, None)
     if not ret:
@@ -134,7 +130,7 @@ def get_cases_coordinates(image_path: str) -> list:
             coordinates.append([])
             continue
 
-        logging.info(f"{i}. Origin point is {upperleft}. Ending point is {lowerright}). Image size is {image.shape[1]}x{image.shape[0]}.")
+        logging.debug(f"{i}. Origin point is {upperleft}. Ending point is {lowerright}). Image size is {image.shape[1]}x{image.shape[0]}.")
         coordinates[-1].append(Coordinates(upperleft, upperright, lowerleft, lowerright))
     
     # coordonnées extérieures
@@ -165,22 +161,24 @@ def get_cases_coordinates(image_path: str) -> list:
     
     return coordinates
 
-def get_cases_coordinates_harris(image_path: str) -> list:
-    img = cv2.imread(image_path)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+def get_cases_coordinates_harris(image: cv2.Mat) -> list:
+    """Renvoie une liste de liste de coordonnées de cases d'échiquier via la méthode de Harris de OpenCV."""
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     gray = numpy.float32(gray)
     dst = cv2.cornerHarris(gray, 2, 3, 0.04)
     #result is dilated for marking the corners, not important
     dst = cv2.dilate(dst, None)
     # Threshold for an optimal value, it may vary depending on the image.
     threshold = 0.7
-    img[dst > threshold * dst.max()] = [0, 0, 255]
+    image[dst > threshold * dst.max()] = [0, 0, 255]
     num_corners = numpy.sum(dst > threshold * dst.max())
     return num_corners
 
 def wrap_image(image: cv2.Mat, coordinates: list) -> cv2.Mat:
+    """Distords l'image pour que celle-ci ne contienne uniquement les cases du plateau de jeu."""
     height = image.shape[0]
     width = image.shape[1]
+    length = int(height) if height > width else int(width)
     
     topleft = list(coordinates[0][0].upperleft)
     topright = list(coordinates[0][-1].upperright)
@@ -188,12 +186,12 @@ def wrap_image(image: cv2.Mat, coordinates: list) -> cv2.Mat:
     bottomright = list(coordinates[-1][-1].lowerright)
 
     pts1 = numpy.float32([topleft, topright, bottomleft, bottomright])
-    pts2 = numpy.float32([(0, 0), (width, 0), (0, height), (width, height)])
+    pts2 = numpy.float32([(0, 0), (length, 0), (0, length), (length, length)])
     M = cv2.getPerspectiveTransform(pts1, pts2)
-    dst = cv2.warpPerspective(image, M, (width, height))
+    dst = cv2.warpPerspective(image, M, (length, length))
 
-    h = height / 8
-    w = width / 8
+    h = image.shape[0] / 8
+    w = image.shape[1] / 8
     for i in range(8):
         for j in range(8):
             c = Coordinates(Point(i * w, j * h), Point((i + 1) * w, j * h), Point(i * w, (j + 1) * h), Point((i + 1) * w, (j + 1) * h))
@@ -229,24 +227,49 @@ def check_cases_content(image_path: str, coordinates: list) -> list:
     blur_factor = (5, 5)
     modified_image = cv2.blur(cv2.convertScaleAbs(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) , alpha = contrast, beta = brightness), blur_factor)
     board = []
-    for row in coordinates:
+    peaks = []
+    h = image.shape[0] / 8
+    w = image.shape[1] / 8
+    for i in range(8):
         board.append([])
-        for coordinate in row:
-            img = coordinate.get_image(modified_image)
+        peaks.append([])
+        for j in range(8):
+            c = Coordinates(Point(i * w, j * h), Point((i + 1) * w, j * h), Point(i * w, (j + 1) * h), Point((i + 1) * w, (j + 1) * h))
+            img = c.get_image(modified_image)
 
             hist = cv2.calcHist([img], [0], None, [256], [0, 256])
             peak = get_number_peaks(hist)
-            if peak < MIN_PEAKS:
-                board[-1].append(Piece(coordinate.get_image(image), PiecesType.UNKNOWN, False))
-            else:
-                board[-1].append(Piece(coordinate.get_image(image), PiecesType.UNKNOWN, True))
-                                
+            empty = peak < MIN_PEAKS
+
+            board[-1].append(not empty)
+            peaks[-1].append(peak)
+            
+            if logging.getLogger().isEnabledFor(logging.DEBUG):
+                cv2.imshow(f"{i}.{j}: {peak}", img)
+                cv2.waitKey(0)
+        
+        cv2.destroyAllWindows()
+
+    if logging.getLogger().isEnabledFor(logging.INFO):
+        pprint.pprint(board)
+        pprint.pprint(peaks)
+        
+
     return board
 
-def chessboard_piece() -> list:
-    pass
+def image_to_chessboard(image_path: str) -> list:
+    """Méthode maîtresse qui convertit une image en échiquier digital."""
+    image = cv2.imread(image_path)
+    if image is None:
+        raise ValueError(f"The given image path does not exist: '{image_path}'")
+
+    coordinates = get_cases_coordinates(image)
+    warped_image = wrap_image(image, coordinates)
+    pieces = check_cases_content(warped_image)
+    return pieces
 
 if __name__ == "__main__":
+    logging.basicConfig(level = logging.INFO)
     logging.info("Launching script...")
     image = "img/chessboard-topview/image3.webp"
     try: 
