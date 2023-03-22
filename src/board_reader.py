@@ -72,13 +72,12 @@ class Coordinates:
         return str(self)
 
 class Piece:
-    def __init__(self, image: cv2.Mat, type: PiecesType, filled: bool) -> None:
+    def __init__(self, image: cv2.Mat, filled: bool) -> None:
         self.image = image
-        self.type = type
         self.filled = filled
 
     def __str__(self) -> str:
-        return str(self.type) if self.filled else "EMPTY"
+        return "X" if self.filled else "EMPTY"
     
     def __repr__(self) -> str:
         return str(self)
@@ -188,10 +187,10 @@ def wrap_image(image: cv2.Mat, coordinates: list) -> cv2.Mat:
     pts1 = numpy.float32([topleft, topright, bottomleft, bottomright])
     pts2 = numpy.float32([(0, 0), (length, 0), (0, length), (length, length)])
     M = cv2.getPerspectiveTransform(pts1, pts2)
-    dst = cv2.warpPerspective(image, M, (length, length))
+    dst = cv2.warpPerspective(image, M, (width, height))
 
-    h = image.shape[0] / 8
-    w = image.shape[1] / 8
+    h = height / 8
+    w = width / 8
     for i in range(8):
         for j in range(8):
             c = Coordinates(Point(i * w, j * h), Point((i + 1) * w, j * h), Point(i * w, (j + 1) * h), Point((i + 1) * w, (j + 1) * h))
