@@ -71,23 +71,15 @@ class Coordinates:
     def __repr__(self) -> str:
         return str(self)
 
-class Piece:
-    def __init__(self, image: cv2.Mat, filled: bool) -> None:
-        self.image = image
-        self.filled = filled
-
-    def __str__(self) -> str:
-        return "X" if self.filled else "EMPTY"
-    
-    def __repr__(self) -> str:
-        return str(self)
-
 def show_image(image: cv2.Mat) -> None:
     if image is None: return
 
     cv2.imshow("show_image", image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    key = cv2.waitKey(0)
+    if key == ord('q'):
+        cv2.destroyAllWindows()
+        logging.info("On s'arrête là.")
+        exit(0)
 
 def crop_to_square(image: cv2.Mat) -> cv2.Mat:
     height = image.shape[0]
@@ -261,18 +253,18 @@ def image_to_chessboard(image_path: str) -> list:
     image = cv2.imread(image_path)
     if image is None:
         raise ValueError(f"The given image path does not exist: '{image_path}'")
-
-    coordinates = get_cases_coordinates(image)
+    
+    try: 
+        coordinates = get_cases_coordinates(image)
+    except ValueError:
+        coordinates = get_cases_coordinates_harris(image)
     warped_image = wrap_image(image, coordinates)
+    colors = get_cases_color(warped_image)
     pieces = check_cases_content(warped_image)
     return pieces
 
 if __name__ == "__main__":
     logging.basicConfig(level = logging.INFO)
     logging.info("Launching script...")
-    image = "img/chessboard-topview/image3.webp"
-    try: 
-        coordinates = get_cases_coordinates(image)
-    except ValueError:
-        coordinates = get_cases_coordinates_harris(image)
-        print(coordinates)
+    image_path = "img/chessboard-topview/image3.webp"
+    image_to_chessboard(image_path)
