@@ -1,5 +1,5 @@
 import cv2, unittest
-from src.board_reader.board_reader import get_cases_coordinates, image_to_chessboard
+from src.board_reader.preprocess import get_cases_coordinates, image_to_chessboard
 
 def checkboard_test(chessboard: list, paths: list) -> bool:
     
