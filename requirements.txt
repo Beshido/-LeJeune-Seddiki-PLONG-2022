@@ -6,3 +6,4 @@ python-chess  # gestion de l'échiquier
 stockfish     # IA d'échec
 tensorflow    # machine learning
 keras         # machine learning
+natsort       # tri naturel des fichiers dataset
