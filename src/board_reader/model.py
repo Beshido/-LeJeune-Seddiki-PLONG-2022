@@ -100,11 +100,12 @@ def train_model() -> None:
 
     model.save(MODEL_LOCATION)
 
-def image(image_file: pathlib.Path):
+def image(image_file: pathlib.Path) -> list:
     preprocessed_data = preprocess.preprocess_chessboard(image_file)
     
     model = keras.models.load_model(MODEL_LOCATION)
-    for item in preprocessed_data:
+    items = []
+    for index, item in enumerate(preprocessed_data):
         image = item[0]
         image = cv2.resize(image, (100, 100))
         image_array = numpy.asarray(image)
@@ -113,8 +114,11 @@ def image(image_file: pathlib.Path):
         predictions = model.predict(image_array)
         score = tensorflow.nn.softmax(predictions[0])
 
-        logging.info(f"This image most likely belongs to {CLASSES[numpy.argmax(score)]} with a {100 * numpy.max(score):.2f} percent confidence.")
-        preprocess.show_image(image)
+        logging.info(f"{index + 1}. Cette image appartient probablement à la classe {CLASSES[numpy.argmax(score)]} avec {100 * numpy.max(score):.2f}% de confiance.")
+        items.append(CLASSES[numpy.argmax(score)])
+
+    logging.info(items)
+    return items
 
 def build_and_train():
     build_and_train()

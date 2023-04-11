@@ -1,9 +1,8 @@
-matplotlib    # visionnage de graphe hist
-numpy         # nécessaire en concordance avec opencv
-opencv-python # manipulation d'image
-chess         # gestion de l'échiquier
-python-chess  # gestion de l'échiquier	
-stockfish     # IA d'échec
-tensorflow    # machine learning
-keras         # machine learning
-natsort       # tri naturel des fichiers dataset
+matplotlib          # visionnage de graphe hist
+natsort             # tri naturel des fichiers dataset
+numpy               # nécessaire en concordance avec opencv
+opencv-python       # manipulation d'image
+python-chess        # gestion de l'échiquier	
+stockfish           # IA d'échec
+keras               # machine learning
+tensorflow          # machine learning

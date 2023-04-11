@@ -89,13 +89,11 @@ def crop_to_square(image: cv2.Mat) -> cv2.Mat:
 def get_cases_coordinates(image: cv2.Mat) -> list:
     """Renvoie une liste de coordonnées de cases d'échiquier via la méthode de findChessboardCornersSB de OpenCV. Efficace pour les images avec une vue de haut."""
     image_bw = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    ret, corners = cv2.findChessboardCorners(image_bw, CHESSBOARD_SIZE, None)
+    ret, corners = cv2.findChessboardCorners(image_bw, CHESSBOARD_SIZE, flags=cv2.CALIB_CB_EXHAUSTIVE)
     if not ret:
-        ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE, None)
+        ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE, flags=cv2.CALIB_CB_EXHAUSTIVE)
         if not ret:
-            ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE, flags=cv2.CALIB_CB_EXHAUSTIVE)
-            if not ret:
-                    raise ValueError(f"OpenCV2 was unable to find {CHESSBOARD_SIZE} chessboard-like patterns.")
+            raise ValueError(f"OpenCV2 was unable to find {CHESSBOARD_SIZE} chessboard-like patterns.")
 
     coordinates = [[]]
     for i in range(len(corners) - 8):
@@ -136,7 +134,7 @@ def get_cases_coordinates(image: cv2.Mat) -> list:
         coordinates[0].append(point0)
         coordinates[-1].append(point8)
 
-    return sum(coordinates, [])
+    return sum(coordinates, []) # aplatit la liste
 
 def get_cases_coordinates_harris(image: cv2.Mat) -> list:
     """Renvoie une liste de liste de coordonnées de cases d'échiquier via la méthode de Harris de OpenCV."""
