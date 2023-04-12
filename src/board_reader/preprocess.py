@@ -89,11 +89,15 @@ def crop_to_square(image: cv2.Mat) -> cv2.Mat:
 def get_cases_coordinates(image: cv2.Mat) -> list:
     """Renvoie une liste de coordonnées de cases d'échiquier via la méthode de findChessboardCornersSB de OpenCV. Efficace pour les images avec une vue de haut."""
     image_bw = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    ret, corners = cv2.findChessboardCorners(image_bw, CHESSBOARD_SIZE, flags=cv2.CALIB_CB_EXHAUSTIVE)
+    ret, corners = cv2.findChessboardCorners(image_bw, CHESSBOARD_SIZE)
     if not ret:
-        ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE, flags=cv2.CALIB_CB_EXHAUSTIVE)
+        ret, corners = cv2.findChessboardCorners(image_bw, CHESSBOARD_SIZE, flags=cv2.CALIB_CB_EXHAUSTIVE)
         if not ret:
-            raise ValueError(f"OpenCV2 was unable to find {CHESSBOARD_SIZE} chessboard-like patterns.")
+            ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE)
+            if not ret:
+                ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE, flags=cv2.CALIB_CB_EXHAUSTIVE)
+                if not ret:
+                    raise ValueError(f"OpenCV2 was unable to find {CHESSBOARD_SIZE} chessboard-like patterns.")
 
     coordinates = [[]]
     for i in range(len(corners) - 8):
@@ -203,8 +207,10 @@ def get_cases_color(image: cv2.Mat) -> list:
     bw_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     height, width = bw_image.shape[0] // 8, bw_image.shape[1] // 8
     blur = cv2.GaussianBlur(bw_image, (5, 5), 0)
-    retval, image_binary = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    _, image_binary = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     x, y = 0, 0
+    lowest_color_coordinates = (None, None)
+    lowest_color_content = None
     for x_index in range(8):
         for y_index in range(8):
             coordinate = Coordinates(
@@ -214,21 +220,26 @@ def get_cases_color(image: cv2.Mat) -> list:
                 Point(x + width, y + height)
             )
             average_color = numpy.average(coordinate.get_image(image_binary))
-            if average_color == 0 or average_color == 255:
-                color = average_color == 255
-                current_color = color if ((x_index % 2 == 0 and y_index == 0) or (x_index % 2 != 0 and y_index % 2 != 0)) else not color
-                colors = []
-                for _ in range(8):
-                    for _ in range(8):
-                        colors.append(current_color)
-                        current_color = not current_color
-                    current_color = not current_color
-                return colors
+            if lowest_color_content is None or average_color < lowest_color_content:
+                lowest_color_content = average_color
+                color = average_color > 255 // 2
+                lowest_color_coordinates = (x_index, y_index)
 
             y += height
         x += width
         y = 0
-    raise ValueError("Couldn't get the chessboard cases color.")
+
+    if lowest_color_content == 255:
+        raise ValueError("Couldn't get the chessboard cases color.")
+            
+    colors = []
+    current_color = color if ((lowest_color_coordinates[0] % 2 == 0 and lowest_color_coordinates[1] == 0) or (lowest_color_coordinates[0] % 2 != 0 and lowest_color_coordinates[1] % 2 != 0)) else not color
+    for _ in range(8):
+        for _ in range(8):
+            colors.append(current_color)
+            current_color = not current_color
+        current_color = not current_color
+    return colors
 
 def check_cases_content(image: cv2.Mat) -> list:
     """Renvoie une liste de liste de booléen représentant si une case est vide ou pas."""
@@ -273,7 +284,7 @@ def preprocess_chessboard(image_path: pathlib.Path) -> list:
     logging.info(f"Prétraitement de l'image suivante en cours : {image_path}")
     image = cv2.imread(image_path.resolve().as_posix())
     if image is None:
-        raise ValueError(f"The given image path does not exist: '{image_path}'")
+        raise ValueError(f"Le chemin vers l'image suivante n'exsite pas : '{image_path}'")
 
     image = crop_to_square(image)
     coordinates = get_cases_coordinates(image)
@@ -281,7 +292,7 @@ def preprocess_chessboard(image_path: pathlib.Path) -> list:
     colors = get_cases_color(warped_image)
     # pieces = check_cases_content(warped_image)
     output = []
-    for coordinate, case_color in zip(reversed(coordinates), reversed(colors)):
+    for coordinate, case_color in zip((coordinates), colors):
         output.append((coordinate.get_image(image), case_color))
 
     assert len(output) == 64
