@@ -1,4 +1,4 @@
-import board_reader.preprocess as preprocess
+import src.board_reader.preprocess as preprocess
 import chess.pgn
 import cv2
 import keras
@@ -56,7 +56,6 @@ def build_dataset_tree_structure() -> None:
                         cropped_images.extend(tmp)
                         tmp = []
 
-                logging.info(f"Succès du prétaitement de l'image suivante : {chessboard_image}")
                 for i in range(64):
                     piece = board.piece_at(i)
                     corresponding_image = cropped_images[i]
@@ -72,7 +71,7 @@ def build_dataset_tree_structure() -> None:
                     )
 
             except ValueError:
-                logging.info(f"Echec du prétaitement de l'image suivante : {chessboard_image}")
+                logging.info(f"Échec du prétaitement de l'image suivante : {chessboard_image}")
                 unprocessable_images.append(chessboard_image)
             
             board.push(move)

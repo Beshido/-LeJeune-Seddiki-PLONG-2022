@@ -17,12 +17,12 @@ if __name__ == "__main__":
         parser.print_help()
         exit()
 
-    import board_reader.model
+    import src.board_reader.model as model
     if args.input is not None:
-        board_reader.model.image(args.input)
+        model.image(args.input)
 
     elif args.build:
-        board_reader.model.build_dataset_tree_structure()
+        model.build_dataset_tree_structure()
     
     elif args.train is not None:
-        board_reader.model.train_model(args.train)
+        model.train_model(args.train)
