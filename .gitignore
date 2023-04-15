@@ -1,4 +1,7 @@
-.vscode
+.vscode/
 __pycache__/
-env
+env/
+tmp/
+# Dossier contenant fichiers générés par le script
 neural-network/dataset/pieces/
+identifiants.txt
