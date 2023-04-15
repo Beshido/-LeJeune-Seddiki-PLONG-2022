@@ -21,6 +21,7 @@ MODEL_LOCATION = pathlib.Path(BASE_DIR, "model/")
 def build_dataset_tree_structure() -> None:
     """Coupe les images de toutes les parties d'échiquiers pour que seules les pièces soient visibles et soient dans le dossier approprié pour la construction de l'objet Dataset."""
     logging.info(f"Nettoyage du dossier {OUTPUT_DIR}...")
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     for item in OUTPUT_DIR.iterdir():
         if item.is_dir():
             shutil.rmtree(item)
