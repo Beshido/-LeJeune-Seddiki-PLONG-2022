@@ -65,6 +65,7 @@ def build_dataset_tree_structure() -> None:
                     save_location.parent.mkdir(parents=True, exist_ok=True)
 
                     cv2.imwrite(save_location.resolve().as_posix(), corresponding_image)
+                    chessboard_image.unlink()
                     print(
                         piece if piece is not None else ".", 
                         end="\n" if (i + 1) % 8 == 0 else " ",

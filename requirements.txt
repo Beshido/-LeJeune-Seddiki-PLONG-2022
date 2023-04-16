@@ -1,8 +1,7 @@
-matplotlib          # visionnage de graphe hist
 natsort             # tri naturel des fichiers dataset
 numpy               # nécessaire en concordance avec opencv
 opencv-python       # manipulation d'image
 python-chess        # gestion de l'échiquier	
 stockfish           # IA d'échec
-keras               # machine learning
-tensorflow          # machine learning
+keras==2.8          # machine learning
+tensorflow==2.8     # machine learning
