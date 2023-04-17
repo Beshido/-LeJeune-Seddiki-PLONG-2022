@@ -279,14 +279,16 @@ def check_cases_content(image: cv2.Mat) -> list:
 
     return board
 
-def preprocess_chessboard(image_path: pathlib.Path) -> list:
+def preprocess_chessboard(image_path: pathlib.Path, rotation_factor: int = 0) -> list:
     """Méthode maîtresse qui convertit une image en échiquier digital. Renvoie une exception ValueError si l'image n'est pas valide ou si OpenCV échoue la reconnaissance de l'échiquier."""
     logging.info(f"Prétraitement de l'image suivante en cours : {image_path}")
     image = cv2.imread(image_path.resolve().as_posix())
     if image is None:
         raise ValueError(f"Le chemin vers l'image suivante n'exsite pas : '{image_path}'")
 
-    image = crop_to_square(image)
+    for _ in range(rotation_factor):
+        image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+    image = cv2.flip(image, 1)
     coordinates = get_cases_coordinates(image)
     warped_image = wrap_image(image, coordinates)
     colors = get_cases_color(warped_image)
