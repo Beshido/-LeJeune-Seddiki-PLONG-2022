@@ -18,8 +18,8 @@ DATASET_DIR = pathlib.Path(BASE_DIR, "dataset/")
 OUTPUT_DIR = pathlib.Path(DATASET_DIR, "pieces/")
 MODEL_LOCATION = pathlib.Path(BASE_DIR, "model/")
 
-def build_dataset_tree_structure() -> None:
-    """Coupe les images de toutes les parties d'échiquiers pour que seules les pièces soient visibles et soient dans le dossier approprié pour la construction de l'objet Dataset."""
+def clear_pieces_directory() -> None:
+    """Nettoie le dossier OUTPUT de son contenu."""
     logging.info(f"Nettoyage du dossier {OUTPUT_DIR}...")
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     for item in OUTPUT_DIR.iterdir():
@@ -28,8 +28,35 @@ def build_dataset_tree_structure() -> None:
         else:
             item.unlink()
     logging.info(f"Suppression du contenu du dossier {OUTPUT_DIR} réalisé avec succès.")
+
+def process_chessboard_image(chessboard_image: pathlib.Path, board: chess.Board, rotation_factor: int = 0):
+    try:
+        chessboard_image_prepreoccesed_data = preprocess.preprocess_chessboard(chessboard_image, rotation_factor)
+
+    except ValueError:
+        logging.info(f"Échec du prétaitement de l'image suivante : {chessboard_image}")
+        return
+
+    for i in range(64):
+        piece = board.piece_at(i)
+
+        dir_name = f"{piece.symbol().lower() if piece is not None else 'empty'}/"
+        filename = f"{chessboard_image.stem}_{(i + 1):02d}{chessboard_image.suffix}"
+        save_location = pathlib.Path(OUTPUT_DIR, dir_name, filename)
+        save_location.parent.mkdir(parents=True, exist_ok=True)
+
+        cv2.imwrite(save_location.resolve().as_posix(), chessboard_image_prepreoccesed_data[i][0])
+        # chessboard_image.unlink()
+        print(
+            piece if piece is not None else ".", 
+            end="\n" if (i + 1) % 8 == 0 else " ",
+            flush=True
+        )
+
+def build_dataset_tree_structure() -> None:
+    """Coupe les images de toutes les parties d'échiquiers pour que seules les pièces soient visibles et soient dans le dossier approprié pour la construction de l'objet Dataset."""
+    clear_pieces_directory()
     
-    unprocessable_images = []
     for game_dir in DATASET_DIR.iterdir():
         if not game_dir.is_dir():
             continue
@@ -44,44 +71,14 @@ def build_dataset_tree_structure() -> None:
             game = chess.pgn.read_game(pgn_file)
         board = game.board()
 
-        for move, chessboard_image in zip(game.mainline_moves(), natsort.natsorted(game_dir.glob("img/*.jpg"))):
-            try:
-                chessboard_image_prepreoccesed_data = preprocess.preprocess_chessboard(chessboard_image)
-                chessboard_image_prepreoccesed_data.reverse()
-                cropped_images = []
-                tmp = []
-                for index, item in enumerate(chessboard_image_prepreoccesed_data):
-                    tmp.append(item[0])
-                    if ((index + 1) % 8 == 0):
-                        tmp.reverse()
-                        cropped_images.extend(tmp)
-                        tmp = []
-
-                for i in range(64):
-                    piece = board.piece_at(i)
-                    corresponding_image = cropped_images[i]
-
-                    save_location = pathlib.Path(OUTPUT_DIR, f"{piece.symbol().lower() if piece is not None else 'empty'}/{chessboard_image.stem}_{(i + 1):02d}{chessboard_image.suffix}")
-                    save_location.parent.mkdir(parents=True, exist_ok=True)
-
-                    cv2.imwrite(save_location.resolve().as_posix(), corresponding_image)
-                    chessboard_image.unlink()
-                    print(
-                        piece if piece is not None else ".", 
-                        end="\n" if (i + 1) % 8 == 0 else " ",
-                        flush=True
-                    )
-
-            except ValueError:
-                logging.info(f"Échec du prétaitement de l'image suivante : {chessboard_image}")
-                unprocessable_images.append(chessboard_image)
-            
+        for move, chessboard_image in zip(game.mainline_moves(), natsort.natsorted(game_dir.glob("left/*.jpg"))):
+            process_chessboard_image(chessboard_image, board, move, 1)
             board.push(move)
-
-    unprocessable_images_log_message = "Les images suivantes n'ont pas pu être prétraitées :\n"
-    for index, unprocessable_image in enumerate(unprocessable_images):
-        unprocessable_images_log_message += f"\t{index}. {unprocessable_image}\n"
-    logging.info(unprocessable_images_log_message)
+        board.reset()
+        for move, chessboard_image in zip(game.mainline_moves(), natsort.natsorted(game_dir.glob("bottom/*.jpg"))):
+            process_chessboard_image(chessboard_image, board, move, 2)
+            board.push(move)
+        board.reset()
 
 def train_model(epochs: int = 10) -> None:
     train_datagen = tensorflow.keras.utils.image_dataset_from_directory(
