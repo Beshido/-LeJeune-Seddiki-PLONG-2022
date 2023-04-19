@@ -32,8 +32,8 @@ class GalleryFragment internal constructor() : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.fragment_gallery)
         binding = FragmentGalleryBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         // get shared preferences
         sharedPreferences = getSharedPreferences("myPrefs", Context.MODE_PRIVATE)
@@ -49,7 +49,7 @@ class GalleryFragment internal constructor() : AppCompatActivity() {
                 putString("port", binding.port.text.toString())
                 apply()
             }
-            Toast.makeText(this, "wow", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "L'a", Toast.LENGTH_SHORT).show()
         }
     }
 }

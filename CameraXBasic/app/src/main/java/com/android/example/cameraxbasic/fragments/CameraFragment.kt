@@ -86,8 +86,6 @@ class CameraFragment : Fragment() {
 
     private lateinit var broadcastManager: LocalBroadcastManager
 
-    private lateinit var mediaStoreUtils: MediaStoreUtils
-
     private var displayId: Int = -1
     private var lensFacing: Int = CameraSelector.LENS_FACING_BACK
     private var preview: Preview? = null
@@ -197,9 +195,6 @@ class CameraFragment : Fragment() {
 
         // Initialize WindowManager to retrieve display metrics
         windowManager = WindowManager(view.context)
-
-        // Initialize MediaStoreUtils for fetching this app's images
-        mediaStoreUtils = MediaStoreUtils(requireContext())
 
         // Wait for the views to be properly laid out
         fragmentCameraBinding.viewFinder.post {
@@ -325,7 +320,7 @@ class CameraFragment : Fragment() {
 
             // Attach the viewfinder's surface provider to preview use case
             preview?.setSurfaceProvider(fragmentCameraBinding.viewFinder.surfaceProvider)
-            observeCameraState(camera?.cameraInfo!!)
+            // observeCameraState(camera?.cameraInfo!!)
         } catch (exc: Exception) {
             Log.e(TAG, "Use case binding failed", exc)
         }
@@ -333,97 +328,6 @@ class CameraFragment : Fragment() {
 
     private fun removeCameraStateObservers(cameraInfo: CameraInfo) {
         cameraInfo.cameraState.removeObservers(viewLifecycleOwner)
-    }
-
-    private fun observeCameraState(cameraInfo: CameraInfo) {
-        cameraInfo.cameraState.observe(viewLifecycleOwner) { cameraState ->
-            run {
-                when (cameraState.type) {
-                    CameraState.Type.PENDING_OPEN -> {
-                        // Ask the user to close other camera apps
-                        Toast.makeText(context,
-                                "CameraState: Pending Open",
-                                Toast.LENGTH_SHORT).show()
-                    }
-                    CameraState.Type.OPENING -> {
-                        // Show the Camera UI
-                        Toast.makeText(context,
-                                "CameraState: Opening",
-                                Toast.LENGTH_SHORT).show()
-                    }
-                    CameraState.Type.OPEN -> {
-                        // Setup Camera resources and begin processing
-                        Toast.makeText(context,
-                                "CameraState: Open",
-                                Toast.LENGTH_SHORT).show()
-                    }
-                    CameraState.Type.CLOSING -> {
-                        // Close camera UI
-                        Toast.makeText(context,
-                                "CameraState: Closing",
-                                Toast.LENGTH_SHORT).show()
-                    }
-                    CameraState.Type.CLOSED -> {
-                        // Free camera resources
-                        Toast.makeText(context,
-                                "CameraState: Closed",
-                                Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-
-            cameraState.error?.let { error ->
-                when (error.code) {
-                    // Open errors
-                    CameraState.ERROR_STREAM_CONFIG -> {
-                        // Make sure to setup the use cases properly
-                        Toast.makeText(context,
-                                "Stream config error",
-                                Toast.LENGTH_SHORT).show()
-                    }
-                    // Opening errors
-                    CameraState.ERROR_CAMERA_IN_USE -> {
-                        // Close the camera or ask user to close another camera app that's using the
-                        // camera
-                        Toast.makeText(context,
-                                "Camera in use",
-                                Toast.LENGTH_SHORT).show()
-                    }
-                    CameraState.ERROR_MAX_CAMERAS_IN_USE -> {
-                        // Close another open camera in the app, or ask the user to close another
-                        // camera app that's using the camera
-                        Toast.makeText(context,
-                                "Max cameras in use",
-                                Toast.LENGTH_SHORT).show()
-                    }
-                    CameraState.ERROR_OTHER_RECOVERABLE_ERROR -> {
-                        Toast.makeText(context,
-                                "Other recoverable error",
-                                Toast.LENGTH_SHORT).show()
-                    }
-                    // Closing errors
-                    CameraState.ERROR_CAMERA_DISABLED -> {
-                        // Ask the user to enable the device's cameras
-                        Toast.makeText(context,
-                                "Camera disabled",
-                                Toast.LENGTH_SHORT).show()
-                    }
-                    CameraState.ERROR_CAMERA_FATAL_ERROR -> {
-                        // Ask the user to reboot the device to restore camera function
-                        Toast.makeText(context,
-                                "Fatal error",
-                                Toast.LENGTH_SHORT).show()
-                    }
-                    // Closed errors
-                    CameraState.ERROR_DO_NOT_DISTURB_MODE_ENABLED -> {
-                        // Ask the user to disable the "Do Not Disturb" mode, then reopen the camera
-                        Toast.makeText(context,
-                                "Do not disturb mode enabled",
-                                Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        }
     }
 
     /**
@@ -458,14 +362,6 @@ class CameraFragment : Fragment() {
                 fragmentCameraBinding.root,
                 true
         )
-
-        // In the background, load latest photo taken (if any) for gallery thumbnail
-        lifecycleScope.launch {
-            val thumbnailUri = mediaStoreUtils.getLatestImageFilename()
-            thumbnailUri?.let {
-                setGalleryThumbnail(it)
-            }
-        }
 
         // Listener for button used to capture photo
         cameraUiContainerBinding?.cameraCaptureButton?.setOnClickListener {
@@ -521,30 +417,40 @@ class CameraFragment : Fragment() {
 
                             val adresse = sharedPreferences.getString("adresse", "0.0.0.0")
                             val port = sharedPreferences.getString("port", "8080")
-                            val url = URL("http://$adresse:$port")
-                            Toast.makeText(context, "http://$adresse:$port", Toast.LENGTH_SHORT).show()
-                            with (url.openConnection() as HttpURLConnection) {
-                                requestMethod = "POST"  // optional default is GET
+                            val urlString = "http://$adresse:$port"
+                            try {
+                                val url = URL(urlString)
+                                with (url.openConnection() as HttpURLConnection) {
+                                    requestMethod = "POST"  // optional default is GET
 
-                                val wr = OutputStreamWriter(outputStream)
-                                // writing imageproxy as binary data to the output stream
-                                wr.write(output.toString())
-                                wr.flush()
-                                wr.close()
+                                    val wr = OutputStreamWriter(outputStream)
+                                    // writing imageproxy as binary data to the output stream
+                                    wr.write(output.toString())
+                                    wr.flush()
+                                    wr.close()
 
-                                println("\nSent 'POST' request to URL : $url; Response Code : $responseCode")
+                                    println("\nSent 'POST' request to URL : $url; Response Code : $responseCode")
 
-                                val `in` = BufferedReader(InputStreamReader(inputStream))
-                                var inputLine: String?
-                                val response = StringBuffer()
+                                    val `in` = BufferedReader(InputStreamReader(inputStream))
+                                    var inputLine: String?
+                                    val response = StringBuffer()
 
-                                while (`in`.readLine().also { inputLine = it } != null) {
-                                    response.append(inputLine)
+                                    while (`in`.readLine().also { inputLine = it } != null) {
+                                        response.append(inputLine)
+                                    }
+                                    `in`.close()
+
+                                    // print result
+                                    println(response.toString())
                                 }
-                                `in`.close()
-
-                                // print result
-                                println(response.toString())
+                            }
+                            catch (e: Exception) {
+                                activity!!.runOnUiThread {
+                                    Toast.makeText(activity, "Erreur lors de l'envoi de l'image à l'adresse $urlString", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                            activity!!.runOnUiThread {
+                                Toast.makeText(activity, "Image envoyée à l'adresse $urlString",Toast.LENGTH_SHORT).show()
                             }
                         }
                     })
