@@ -66,6 +66,7 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
+
 /** Helper type alias used for analysis use case callbacks */
 typealias LumaListener = (luma: Double) -> Unit
 
@@ -95,6 +96,7 @@ class CameraFragment : Fragment() {
     private var camera: Camera? = null
     private var cameraProvider: ProcessCameraProvider? = null
     private lateinit var windowManager: WindowManager
+    private lateinit var sharedPreferences: SharedPreferences
 
     private val displayManager by lazy {
         requireContext().getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
@@ -155,12 +157,9 @@ class CameraFragment : Fragment() {
         displayManager.unregisterDisplayListener(displayListener)
     }
 
-    override fun onCreateView(
-            inflater: LayoutInflater,
-            container: ViewGroup?,
-            savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _fragmentCameraBinding = FragmentCameraBinding.inflate(inflater, container, false)
+        sharedPreferences = activity?.getSharedPreferences("myPrefs", Context.MODE_PRIVATE)!!
         return fragmentCameraBinding.root
     }
 
@@ -520,7 +519,10 @@ class CameraFragment : Fragment() {
                                 )
                             }
 
-                            val url = URL("http://0.0.0.0:8080")
+                            val adresse = sharedPreferences.getString("adresse", "0.0.0.0")
+                            val port = sharedPreferences.getString("port", "8080")
+                            val url = URL("http://$adresse:$port")
+                            Toast.makeText(context, "http://$adresse:$port", Toast.LENGTH_SHORT).show()
                             with (url.openConnection() as HttpURLConnection) {
                                 requestMethod = "POST"  // optional default is GET
 
@@ -580,16 +582,8 @@ class CameraFragment : Fragment() {
 
         // Listener for button used to view the most recent photo
         cameraUiContainerBinding?.photoViewButton?.setOnClickListener {
-            // Only navigate when the gallery has photos
-            lifecycleScope.launch {
-                if (mediaStoreUtils.getImages().isNotEmpty()) {
-                    Navigation.findNavController(requireActivity(), R.id.fragment_container)
-                        .navigate(CameraFragmentDirections.actionCameraToGallery(
-                            mediaStoreUtils.mediaStoreCollection.toString()
-                        )
-                    )
-                }
-            }
+            val intent = Intent(activity, GalleryFragment::class.java)
+            startActivity(intent)
         }
     }
 
