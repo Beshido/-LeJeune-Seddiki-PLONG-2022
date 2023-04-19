@@ -17,32 +17,12 @@
 package com.android.example.cameraxbasic.fragments
 
 import android.content.Context
-import android.content.Intent
 import android.content.SharedPreferences
-import android.media.MediaScannerConnection
-import android.os.Build
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.webkit.MimeTypeMap
-import android.widget.EditText
-import androidx.appcompat.app.AlertDialog
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentManager
-import androidx.lifecycle.lifecycleScope
-import androidx.navigation.Navigation
-import androidx.navigation.fragment.navArgs
-import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.android.example.cameraxbasic.R
 import com.android.example.cameraxbasic.databinding.FragmentGalleryBinding
-import com.android.example.cameraxbasic.utils.MediaStoreFile
-import com.android.example.cameraxbasic.utils.MediaStoreUtils
-import com.android.example.cameraxbasic.utils.padWithDisplayCutout
-import com.android.example.cameraxbasic.utils.showImmersive
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.launch
 
 /** Fragment used to present the user with a gallery of photos taken */
 class GalleryFragment internal constructor() : AppCompatActivity() {
@@ -59,8 +39,8 @@ class GalleryFragment internal constructor() : AppCompatActivity() {
         sharedPreferences = getSharedPreferences("myPrefs", Context.MODE_PRIVATE)
 
         // get references to the EditText views and load the saved preferences if any
-        binding.adresse.setText(sharedPreferences.getString("adresse", ""))
-        binding.port.setText(sharedPreferences.getString("port", ""))
+        binding.adresse.setText(sharedPreferences.getString("adresse", "0.0.0.0"))
+        binding.port.setText(sharedPreferences.getString("port", "8080"))
 
         // get reference to the save button and set a click listener to save the input values in preferences
         binding.saveButton.setOnClickListener {
@@ -69,6 +49,7 @@ class GalleryFragment internal constructor() : AppCompatActivity() {
                 putString("port", binding.port.text.toString())
                 apply()
             }
+            Toast.makeText(this, "wow", Toast.LENGTH_SHORT).show()
         }
     }
 }
