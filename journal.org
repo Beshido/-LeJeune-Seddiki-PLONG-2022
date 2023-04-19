@@ -23,3 +23,19 @@ Fait :
 - ajouter objectifs mars-avril (dispositif physique)
 - améliorer "parsing" : plus de configurations possibles (angles, ...) déduire quelle pièce est où (utiliser machine learning + connaissance des règles)
 - export de configuration (provenant notamment du parsing) en fichier exploitable ailleurs
+
+<19/04/23>
+
+Degorre
+
+Fait
+
+- essais Rpi : il reboote dès qu'on branche un clavier (problème hardware), chauffe anormalement
+- tests de ML sur GPU de l'université, pbs d'overfitting (-> faire varier les angles)
+
+Faire 
+
+- au choix : insister avec le Rpi ? retour à Arduino (ESP32) ? Utilisation du téléphone seulement (pour caméra et vibreur) ?
+- stratégie de correction a posteriori
+- étoffement dataset
+- finir !
