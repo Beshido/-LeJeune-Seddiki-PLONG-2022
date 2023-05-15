@@ -23,7 +23,7 @@ if __name__ == "__main__":
     if args.server is not None:
         server.start(args.server)
     elif args.input is not None:
-        model.image(args.input)
+        model._predict(args.input)
     elif args.build:
         model.build_dataset_tree_structure()
     elif args.train is not None:

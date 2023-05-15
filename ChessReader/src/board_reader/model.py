@@ -14,12 +14,13 @@ import tensorflow
 CLASSES = [ "b", "empty", "k", "n", "p", "q", "r" ]
 
 BASE_DIR = pathlib.Path("neural-network/")
-DATASET_DIR = pathlib.Path(BASE_DIR, "dataset/")
-OUTPUT_DIR = pathlib.Path(DATASET_DIR, "pieces/")
-MODEL_LOCATION = pathlib.Path(BASE_DIR, "model/")
+DATASET_DIR = pathlib.Path(BASE_DIR / "dataset/")
+OUTPUT_DIR = pathlib.Path(DATASET_DIR / "pieces/")
+MODEL_LOCATION = pathlib.Path(BASE_DIR / "model/")
 
 def clear_pieces_directory() -> None:
     """Nettoie le dossier OUTPUT de son contenu."""
+
     logging.info(f"Nettoyage du dossier {OUTPUT_DIR}...")
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     for item in OUTPUT_DIR.iterdir():
@@ -31,7 +32,7 @@ def clear_pieces_directory() -> None:
 
 def process_chessboard_image(chessboard_image: pathlib.Path, board: chess.Board, rotation_factor: int = 0):
     try:
-        chessboard_image_prepreoccesed_data = preprocess.preprocess_chessboard(chessboard_image, rotation_factor)
+        chessboard_image_prepreoccesed_data = preprocess._preprocess_chessboard(chessboard_image, rotation_factor)
 
     except ValueError:
         logging.info(f"Échec du prétaitement de l'image suivante : {chessboard_image}")
@@ -55,6 +56,7 @@ def process_chessboard_image(chessboard_image: pathlib.Path, board: chess.Board,
 
 def build_dataset_tree_structure() -> None:
     """Coupe les images de toutes les parties d'échiquiers pour que seules les pièces soient visibles et soient dans le dossier approprié pour la construction de l'objet Dataset."""
+
     clear_pieces_directory()
     
     for game_dir in DATASET_DIR.iterdir():
@@ -125,9 +127,13 @@ def train_model(epochs: int = 10) -> None:
 
     model.save(MODEL_LOCATION)
 
-def image(image_file: pathlib.Path) -> list:
-    preprocessed_data = preprocess.preprocess_chessboard(image_file)
-    
+def predict_from_file(image_file: pathlib.Path) -> list:
+    return _predict(preprocess.preprocess_chessboard_from_file(image_file))
+
+def predict_from_memory(image: bytes) -> list:
+    return _predict(preprocess.preprocess_chessboard_from_memory(image))
+
+def _predict(preprocessed_data: list) -> list:
     model = keras.models.load_model(MODEL_LOCATION)
     items = []
     for index, item in enumerate(preprocessed_data):
