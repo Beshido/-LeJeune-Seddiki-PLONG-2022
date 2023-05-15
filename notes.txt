@@ -1,0 +1,4 @@
+* preter arduino
+* utiliser un autre dataset
+* enregistrer en backtrackant
+* plusieurs photos au début
