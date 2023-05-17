@@ -52,7 +52,7 @@
 
     <fragment
         android:id="@+id/gallery_fragment"
-        android:name="com.android.example.cameraxbasic.fragments.GalleryFragment"
+        android:name="com.android.example.cameraxbasic.fragments.SettingsFragment"
         android:label="GalleryFragment" >
         <argument
             android:name="root_directory"

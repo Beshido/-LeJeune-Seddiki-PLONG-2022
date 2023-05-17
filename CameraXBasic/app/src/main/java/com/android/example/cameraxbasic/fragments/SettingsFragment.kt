@@ -21,11 +21,10 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.android.example.cameraxbasic.R
 import com.android.example.cameraxbasic.databinding.FragmentGalleryBinding
 
 /** Fragment used to present the user with a gallery of photos taken */
-class GalleryFragment internal constructor() : AppCompatActivity() {
+class SettingsFragment internal constructor() : AppCompatActivity() {
 
     private lateinit var sharedPreferences: SharedPreferences
     private lateinit var binding: FragmentGalleryBinding
@@ -39,17 +38,17 @@ class GalleryFragment internal constructor() : AppCompatActivity() {
         sharedPreferences = getSharedPreferences("myPrefs", Context.MODE_PRIVATE)
 
         // get references to the EditText views and load the saved preferences if any
-        binding.adresse.setText(sharedPreferences.getString("adresse", "0.0.0.0"))
+        binding.adresse.setText(sharedPreferences.getString("address", "0.0.0.0"))
         binding.port.setText(sharedPreferences.getString("port", "8080"))
 
         // get reference to the save button and set a click listener to save the input values in preferences
         binding.saveButton.setOnClickListener {
             with(sharedPreferences.edit()) {
-                putString("adresse", binding.adresse.text.toString())
+                putString("address", binding.adresse.text.toString())
                 putString("port", binding.port.text.toString())
                 apply()
             }
-            Toast.makeText(this, "L'a", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Adresse et port indiqué sauvegardés.", Toast.LENGTH_SHORT).show()
         }
     }
 }

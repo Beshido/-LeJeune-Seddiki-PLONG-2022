@@ -81,7 +81,7 @@
 
         </activity>
         <activity
-            android:name=".fragments.GalleryFragment"
+            android:name=".fragments.SettingsFragment"
             android:theme="@style/AppTheme" />
 
     </application>
