@@ -279,12 +279,29 @@ def check_cases_content(image: cv2.Mat) -> list:
 
     return board
 
-def preprocess_chessboard(image_path: pathlib.Path, rotation_factor: int = 0) -> list:
-    """Méthode maîtresse qui convertit une image en échiquier digital. Renvoie une exception ValueError si l'image n'est pas valide ou si OpenCV échoue la reconnaissance de l'échiquier."""
+def preprocess_chessboard_from_file(image_path: pathlib.Path, rotation_factor: int = 0) -> list:
+    """Méthode maîtresse qui convertit un fichier en échiquier digital. Renvoie une exception ValueError si l'image n'est pas valide ou si OpenCV échoue la reconnaissance de l'échiquier."""
+
     logging.info(f"Prétraitement de l'image suivante en cours : {image_path}")
     image = cv2.imread(image_path.resolve().as_posix())
     if image is None:
         raise ValueError(f"Le chemin vers l'image suivante n'exsite pas : '{image_path}'")
+
+    return _preprocess_chessboard(image, rotation_factor)
+
+def preprocess_chessboard_from_memory(image: bytes, rotation_factor: int = 0) -> list:
+    """Méthode maîtresse qui convertit une image en mémoire en échiquier digital. Renvoie une exception ValueError si l'image n'est pas valide ou si OpenCV échoue la reconnaissance de l'échiquier."""
+
+    image = numpy.frombuffer(image, numpy.uint8)
+    image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+    if image is None:
+        raise ValueError(f"Le buffer de l'image est illégal.")
+    logging.info(f"L'image en mémoire a été chargée avec succès.")
+    
+    return _preprocess_chessboard(image, rotation_factor)
+
+def _preprocess_chessboard(image: cv2.Mat, rotation_factor: int = 0) -> list:
+    """Méthode maîtresse qui convertit une image en échiquier digital. Renvoie une exception ValueError si l'image n'est pas valide ou si OpenCV échoue la reconnaissance de l'échiquier."""
 
     for _ in range(rotation_factor):
         image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
@@ -298,5 +315,5 @@ def preprocess_chessboard(image_path: pathlib.Path, rotation_factor: int = 0) ->
         output.append((coordinate.get_image(image), case_color))
 
     assert len(output) == 64
-    logging.info(f"Succès du prétraitement de l'image suivante : {image_path}")
+    logging.info(f"Succès du prétraitement de l'image.")
     return output

@@ -1,5 +1,5 @@
 import cv2, unittest
-from src.board_reader.preprocess import get_cases_coordinates, preprocess_chessboard
+from src.board_reader.preprocess import get_cases_coordinates, _preprocess_chessboard
 
 def checkboard_test(chessboard: list, paths: list) -> bool:
     
@@ -44,7 +44,7 @@ class TestBoardReader(unittest.TestCase):
             # "img/chessboard-topview/image4.jpg"
         ]
         for path in paths:
-            board = preprocess_chessboard(path)
+            board = _preprocess_chessboard(path)
             self.assertEqual(initial_chessboard, board, f"Chessboard piece placement is different than expected for '{path}'")
         
     def test_image_vertical_init(self):
@@ -64,7 +64,7 @@ class TestBoardReader(unittest.TestCase):
             # "img/chessboard-topview/image7.jpg"
         ]
         for path in paths:
-            board = preprocess_chessboard(path)
+            board = _preprocess_chessboard(path)
             self.assertEqual(initial_chessboard, board, f"Chessboard piece placement is different than expected for '{path}'")
 
 if __name__ == '__main__':
