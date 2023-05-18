@@ -1,13 +1,12 @@
 import http.server
 import logging
 logging.basicConfig(level = logging.INFO)
-from src.board_reader import model
 import socket
 import socketserver
 import urllib.parse
+from src.board_reader import model
 
 HOST = "0.0.0.0"
-DIRECTORY = "html/build/dist/"
 
 class MyServer(http.server.BaseHTTPRequestHandler):
     def __init__(self, request: tuple, client_address: tuple, server: socketserver.BaseServer) -> None:
