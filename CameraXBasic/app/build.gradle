@@ -65,6 +65,7 @@ dependencies {
 
     // Concurrent library for asynchronous coroutines
     implementation 'androidx.concurrent:concurrent-futures-ktx:1.1.0'
+    implementation 'com.google.android.material:material:1.5.0'
 
     // Navigation library
     def nav_version = "2.3.5"

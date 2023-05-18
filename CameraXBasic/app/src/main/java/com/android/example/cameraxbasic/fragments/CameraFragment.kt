@@ -1,19 +1,3 @@
-/*
- * Copyright 2020 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package com.android.example.cameraxbasic.fragments
 
 import android.content.Context
@@ -36,7 +20,6 @@ import androidx.camera.core.CameraInfo
 import androidx.camera.core.CameraInfoUnavailableException
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -47,6 +30,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.navigation.Navigation
 import androidx.window.WindowManager
 import com.android.example.cameraxbasic.R
+import com.android.example.cameraxbasic.SettingsActivity
 import com.android.example.cameraxbasic.databinding.CameraUiContainerBinding
 import com.android.example.cameraxbasic.databinding.FragmentCameraBinding
 import com.android.example.cameraxbasic.utils.ANIMATION_FAST_MILLIS
@@ -55,11 +39,15 @@ import kotlinx.coroutines.launch
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
+import java.io.OutputStream
+import java.net.ConnectException
 import java.net.HttpURLConnection
+import java.net.Socket
 import java.net.URL
 import java.nio.ByteBuffer
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import kotlin.concurrent.thread
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -87,6 +75,8 @@ class CameraFragment : Fragment() {
     private var cameraProvider: ProcessCameraProvider? = null
     private lateinit var windowManager: WindowManager
     private lateinit var sharedPreferences: SharedPreferences
+
+    private lateinit var socket: Socket
 
     private val displayManager by lazy {
         requireContext().getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
@@ -122,20 +112,9 @@ class CameraFragment : Fragment() {
         }
     }
 
-    override fun onDestroyView() {
-        _fragmentCameraBinding = null
-        super.onDestroyView()
-
-        // Shut down our background executor
-        cameraExecutor.shutdown()
-
-        // Unregister the broadcast receivers and listeners
-        displayManager.unregisterDisplayListener(displayListener)
-    }
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _fragmentCameraBinding = FragmentCameraBinding.inflate(inflater, container, false)
-        sharedPreferences = activity?.getSharedPreferences("myPrefs", Context.MODE_PRIVATE)!!
+        sharedPreferences = context?.getSharedPreferences("myPrefs", Context.MODE_PRIVATE)!!
         return fragmentCameraBinding.root
     }
 
@@ -288,10 +267,6 @@ class CameraFragment : Fragment() {
             imageCapture?.let { imageCapture ->
                 // Setup image capture listener which is triggered after photo has been taken
                 imageCapture.takePicture(cameraExecutor, object : ImageCapture.OnImageCapturedCallback() {
-                    override fun onError(exc: ImageCaptureException) {
-                        Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
-                    }
-
                     override fun onCaptureSuccess(image: ImageProxy) {
                         super.onCaptureSuccess(image)
 
@@ -301,36 +276,59 @@ class CameraFragment : Fragment() {
                         val data = buffer.toByteArray()
 
                         val address = sharedPreferences.getString("address", "0.0.0.0")
-                        val port = sharedPreferences.getString("port", "8080")
-                        val urlString = "http://$address:$port"
-                        try {
-                            val url = URL(urlString)
-                            with (url.openConnection() as HttpURLConnection) {
-                                requestMethod = "POST"  // optional default is GET
+                        val port = sharedPreferences.getInt("port", 8080)
+                        val useSocket = sharedPreferences.getBoolean("socket", true)
 
-                                outputStream.write(data)
-                                outputStream.flush()
-                                outputStream.close()
-
-                                println("\nSent 'POST' request to URL : $url; Response Code : $responseCode")
-
-                                val `in` = BufferedReader(InputStreamReader(inputStream))
-                                var inputLine: String?
-                                val response = StringBuffer()
-
-                                while (`in`.readLine().also { inputLine = it } != null) {
-                                    response.append(inputLine)
-                                }
-                                `in`.close()
-
-                                activity!!.runOnUiThread {
-                                    Toast.makeText(activity, "Image envoyée vers $urlString",Toast.LENGTH_SHORT).show()
-                                }
+                        if (useSocket) {
+                            with (socket.getOutputStream()) {
+                                // write in big endian
+                                write(data.size.toByteArray())
+                                write(data)
+                                flush()
+                                close()
+                            }
+                            activity!!.runOnUiThread {
+                                Toast.makeText(activity, "Image de ${data.size} octets envoyée vers $address:$port via socket",Toast.LENGTH_SHORT).show()
                             }
                         }
-                        catch (e: IOException) {
-                            activity!!.runOnUiThread {
-                                Toast.makeText(activity, "Erreur pendant la tentative d'envoi vers $urlString", Toast.LENGTH_SHORT).show()
+                        else {
+                            val urlString = "http://$address:$port"
+                            try {
+                                val url = URL(urlString)
+                                with (url.openConnection() as HttpURLConnection) {
+                                    requestMethod = "POST"  // optional default is GET
+
+                                    outputStream.write(data)
+                                    outputStream.flush()
+                                    outputStream.close()
+
+                                    println("\nSent 'POST' request to URL : $url; Response Code : $responseCode")
+
+                                    val `in` = BufferedReader(InputStreamReader(inputStream))
+                                    var inputLine: String?
+                                    val response = StringBuffer()
+
+                                    while (`in`.readLine().also { inputLine = it } != null) {
+                                        response.append(inputLine)
+                                    }
+                                    `in`.close()
+
+                                    activity!!.runOnUiThread {
+                                        Toast.makeText(
+                                            activity,
+                                            "Image envoyée vers $urlString",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            } catch (e: IOException) {
+                                activity!!.runOnUiThread {
+                                    Toast.makeText(
+                                        activity,
+                                        "Erreur pendant la tentative d'envoi vers $urlString",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                             }
                         }
                     }
@@ -343,6 +341,15 @@ class CameraFragment : Fragment() {
                         val data = ByteArray(remaining())
                         get(data)   // Copy the buffer into a byte array
                         return data // Return the byte array
+                    }
+
+                    private fun Int.toByteArray(): ByteArray {
+                        val buffer = ByteArray(4)
+                        buffer[0] = (this shr 0).toByte()
+                        buffer[1] = (this shr 8).toByte()
+                        buffer[2] = (this shr 16).toByte()
+                        buffer[3] = (this shr 24).toByte()
+                        return buffer
                     }
                 })
 
@@ -360,27 +367,31 @@ class CameraFragment : Fragment() {
         }
 
         // Setup for button used to switch cameras
-        cameraUiContainerBinding?.cameraSwitchButton?.let {
-
-            // Disable the button until the camera is set up
-            it.isEnabled = false
-
-            // Listener for button used to switch cameras. Only called if the button is enabled
-            it.setOnClickListener {
-                lensFacing = if (CameraSelector.LENS_FACING_FRONT == lensFacing) {
-                    CameraSelector.LENS_FACING_BACK
-                } else {
-                    CameraSelector.LENS_FACING_FRONT
-                }
-                // Re-bind use cases to update selected camera
-                bindCameraUseCases()
-            }
+        cameraUiContainerBinding?.cameraSwitchButton?.setOnClickListener {
         }
 
         // Listener for button used to view the most recent photo
         cameraUiContainerBinding?.photoViewButton?.setOnClickListener {
-            val intent = Intent(activity, SettingsFragment::class.java)
-            startActivity(intent)
+            val address = sharedPreferences.getString("address", "0.0.0.0")
+            val port = sharedPreferences.getInt("port", 8080)
+
+            thread {
+                try {
+                    socket = Socket(address, port)
+                    with(socket.getOutputStream()) {
+                        write("PHOTO".toByteArray())
+                        flush()
+                    }
+                } catch (e: ConnectException) {
+                    activity?.runOnUiThread {
+                        Toast.makeText(
+                            activity,
+                            "Impossible de se connecter via socket à $address au port $port.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
         }
     }
 

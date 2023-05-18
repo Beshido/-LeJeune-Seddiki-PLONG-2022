@@ -14,9 +14,7 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/white"
@@ -37,7 +35,11 @@
         android:hint="@string/port"
         android:inputType="number"
         android:autofillHints="" />
-
+    <CheckBox
+        android:id="@+id/socket"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/socket" />
     <Button
         android:id="@+id/save_button"
         android:layout_width="match_parent"
