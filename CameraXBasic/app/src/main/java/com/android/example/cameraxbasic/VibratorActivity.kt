@@ -13,7 +13,6 @@ class VibratorActivity: AppCompatActivity() {
 
     private lateinit var binding: VibratorActivityBinding
     private lateinit var preferences: SharedPreferences
-    private lateinit var socket: Socket
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,18 +29,23 @@ class VibratorActivity: AppCompatActivity() {
 
         thread {
             try {
-                socket = Socket(address, port)
-                with(socket.getOutputStream()) {
+                val socket = Socket(address, port)
+                with (socket.getOutputStream()) {
                     write("VIBRA".toByteArray())
                     flush()
                 }
+                val input = socket.getInputStream()
+                while (true) {
+                    val buffer = ByteArray(4)
+                    input.read(buffer)
+                    val move = buffer.toString()
+                    runOnUiThread {
+                        Toast.makeText(this, "Message reçu: $move", Toast.LENGTH_SHORT).show()
+                    }
+                }
             } catch (e: ConnectException) {
                 runOnUiThread {
-                    Toast.makeText(
-                        this,
-                        "Impossible de se connecter via socket à $address au port $port.",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(this, "Impossible de se connecter via socket à $address au port $port.", Toast.LENGTH_SHORT).show()
                 }
             }
         }

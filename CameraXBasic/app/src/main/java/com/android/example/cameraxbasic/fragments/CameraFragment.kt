@@ -268,6 +268,7 @@ class CameraFragment : Fragment() {
                 // Setup image capture listener which is triggered after photo has been taken
                 imageCapture.takePicture(cameraExecutor, object : ImageCapture.OnImageCapturedCallback() {
                     override fun onCaptureSuccess(image: ImageProxy) {
+                        cameraUiContainerBinding?.cameraCaptureButton?.isEnabled = false
                         super.onCaptureSuccess(image)
 
                         val buffer = image.planes[0].buffer
@@ -279,6 +280,7 @@ class CameraFragment : Fragment() {
                         val port = sharedPreferences.getInt("port", 8080)
                         val useSocket = sharedPreferences.getBoolean("socket", true)
 
+                        println(data.size)
                         if (useSocket) {
                             with (socket.getOutputStream()) {
                                 // write in big endian
@@ -287,6 +289,8 @@ class CameraFragment : Fragment() {
                                 flush()
                                 close()
                             }
+
+                            cameraUiContainerBinding?.cameraCaptureButton?.isEnabled = true
                             activity!!.runOnUiThread {
                                 Toast.makeText(activity, "Image de ${data.size} octets envoyée vers $address:$port via socket",Toast.LENGTH_SHORT).show()
                             }
