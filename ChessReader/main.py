@@ -27,6 +27,7 @@ if __name__ == "__main__":
     elif args.build:
         model.build_dataset_tree_structure()
     elif args.train is not None:
+        model.build_dataset_tree_structure()
         model.train_model(args.train)
     elif args.server is not None:
         server.start(args.server)

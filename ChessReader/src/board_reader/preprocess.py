@@ -296,6 +296,7 @@ def preprocess_chessboard_from_memory(image: bytes, rotation_factor: int = 0) ->
     image = cv2.imdecode(image, cv2.IMREAD_COLOR)
     if image is None:
         raise ValueError(f"Le buffer de l'image est illégal.")
+    show_image(image)
     logging.info(f"L'image en mémoire a été chargée avec succès.")
     
     return _preprocess_chessboard(image, rotation_factor)

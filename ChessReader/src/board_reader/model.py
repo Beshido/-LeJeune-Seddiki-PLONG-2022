@@ -32,7 +32,7 @@ def clear_pieces_directory() -> None:
 
 def process_chessboard_image(chessboard_image: pathlib.Path, board: chess.Board, rotation_factor: int = 0):
     try:
-        chessboard_image_prepreoccesed_data = preprocess._preprocess_chessboard(chessboard_image, rotation_factor)
+        chessboard_image_prepreoccesed_data = preprocess.preprocess_chessboard_from_file(chessboard_image, rotation_factor)
 
     except ValueError:
         logging.info(f"Échec du prétaitement de l'image suivante : {chessboard_image}")
@@ -74,11 +74,11 @@ def build_dataset_tree_structure() -> None:
         board = game.board()
 
         for move, chessboard_image in zip(game.mainline_moves(), natsort.natsorted(game_dir.glob("left/*.jpg"))):
-            process_chessboard_image(chessboard_image, board, move, 1)
+            process_chessboard_image(chessboard_image, board, 1)
             board.push(move)
         board.reset()
         for move, chessboard_image in zip(game.mainline_moves(), natsort.natsorted(game_dir.glob("bottom/*.jpg"))):
-            process_chessboard_image(chessboard_image, board, move, 2)
+            process_chessboard_image(chessboard_image, board, 2)
             board.push(move)
         board.reset()
 
@@ -133,7 +133,7 @@ def predict_from_file(image_file: pathlib.Path) -> list:
 def predict_from_memory(image: bytes) -> list:
     return _predict(preprocess.preprocess_chessboard_from_memory(image))
 
-def _predict(preprocessed_data: list) -> list:
+def _predict(preprocessed_data: list) -> chess.Board:
     model = keras.models.load_model(MODEL_LOCATION)
     items = []
     for index, item in enumerate(preprocessed_data):
@@ -150,7 +150,10 @@ def _predict(preprocessed_data: list) -> list:
         preprocess.show_image(image)
 
     logging.info(items)
-    return items
+    board = chess.Board()
+    for index, item in enumerate(items):
+        board.set_piece_at(index, chess.Piece.from_symbol(item))
+    return board
 
 def build_and_train():
     build_dataset_tree_structure()
