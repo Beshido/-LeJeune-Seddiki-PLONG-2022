@@ -47,12 +47,13 @@ def process_chessboard_image(chessboard_image: pathlib.Path, board: chess.Board,
         save_location.parent.mkdir(parents=True, exist_ok=True)
 
         cv2.imwrite(save_location.resolve().as_posix(), chessboard_image_prepreoccesed_data[i][0])
+        logging.info(f"{save_location}: {i}/64")
         # chessboard_image.unlink()
-        print(
-            piece if piece is not None else ".", 
-            end="\n" if (i + 1) % 8 == 0 else " ",
-            flush=True
-        )
+        # print(
+        #     piece if piece is not None else ".",
+        #     end="\n" if (i + 1) % 8 == 0 else " ",
+        #     flush=True
+        # )
 
 def build_dataset_tree_structure() -> None:
     """Coupe les images de toutes les parties d'échiquiers pour que seules les pièces soient visibles et soient dans le dossier approprié pour la construction de l'objet Dataset."""
