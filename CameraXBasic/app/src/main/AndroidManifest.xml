@@ -40,7 +40,7 @@
         tools:ignore="AllowBackup">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".MainMenu"
             android:clearTaskOnLaunch="true"
             android:theme="@style/AppTheme"
             android:icon="@mipmap/ic_launcher"
@@ -81,9 +81,14 @@
 
         </activity>
         <activity
-            android:name=".fragments.GalleryFragment"
+            android:name=".PhotoActivity"
             android:theme="@style/AppTheme" />
-
+        <activity
+            android:name=".VibratorActivity"
+            android:theme="@style/AppTheme" />
+        <activity
+            android:name=".SettingsActivity"
+            android:theme="@style/AppTheme" />
     </application>
 
 </manifest>

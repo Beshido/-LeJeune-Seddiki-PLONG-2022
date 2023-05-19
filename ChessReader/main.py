@@ -6,6 +6,7 @@ logging.basicConfig(level = logging.INFO)
 import pathlib
 import src.board_reader.model as model
 import src.server.server as server
+import src.server.socket_server as socket_server
 import sys
 
 if __name__ == "__main__":
@@ -14,17 +15,21 @@ if __name__ == "__main__":
     parser.add_argument("--build", action="store_true", help="Entraîne le modèle avec les images de jeu dans 'neural-network-dataset'.")
     parser.add_argument("--train", type=int, help="Entraine le dataset le nombre de fois indiqué.")
     parser.add_argument("--server", type=int, help="Lance le serveur au port indiqué.")
+    parser.add_argument("--socket", type=int, help="Lance le serveur socket au port indiqué.")
     args = parser.parse_args()
 
     if len(sys.argv) <= 1:
         parser.print_help()
         exit()
 
-    if args.server is not None:
-        server.start(args.server)
-    elif args.input is not None:
-        model._predict(args.input)
+    if args.input is not None:
+        model.predict_from_file(args.input)
     elif args.build:
         model.build_dataset_tree_structure()
     elif args.train is not None:
+        model.build_dataset_tree_structure()
         model.train_model(args.train)
+    elif args.server is not None:
+        server.start(args.server)
+    elif args.socket is not None:
+        socket_server.start(args.socket)
