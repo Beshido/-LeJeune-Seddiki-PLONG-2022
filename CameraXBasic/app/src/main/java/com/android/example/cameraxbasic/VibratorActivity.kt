@@ -35,18 +35,16 @@ class VibratorActivity: AppCompatActivity() {
                     for (k in 0 until j) {
                         vibrator.vibrate(400)
                     }
-                    i++
+                    Thread.sleep(250)
                 }
-
-                if (i % 2 != 0 && j == string[i].toString().toIntOrNull()) {
+                else if (i % 2 != 0 && j == string[i].toString().toIntOrNull()) {
                     for (k in 0 until j) {
                         vibrator.vibrate(400)
                     }
-                    i++
-
-                    if (i == 2) {
-                        Thread.sleep(1000)
-                    }
+                    Thread.sleep(250)
+                }
+                else if (i == 2) {
+                    Thread.sleep(1000)
                 }
             }
         }
