@@ -23,6 +23,31 @@ class VibratorActivity: AppCompatActivity() {
         setupSocket()
     }
 
+    private fun chessToVibrate(string: String) {
+        val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
+        val lettres = "abcdefgh"
+        for(i in string.indices){
+            for (j in 0..7){
+                if (i == 0 mod 2 && lettres[j]==string[i]){
+                    for(k in j){
+                    vibrator.vibrate(400)
+                }
+                    i++
+                }
+                if(i =! 0 mod 2 && j == StringToInt(string[i])){
+                    for(k in j){
+                        vibrator.vibrate(400)
+                }
+                    i++
+                    if(i == 2){
+                        wait(1000)
+                    }
+                }
+            }
+        }
+
+    }
+
     private fun setupSocket() {
         val address = preferences.getString("address", "0.0.0.0")
         val port = preferences.getInt("port", 8080)
