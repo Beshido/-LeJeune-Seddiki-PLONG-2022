@@ -1,6 +1,7 @@
 import logging
 logging.basicConfig(level = logging.INFO)
 import socket
+import time
 from src.board_reader import model
 from src.ia import best_move
 
@@ -48,6 +49,13 @@ def _launch(server_socket: socket.socket) -> None:
         logging.info(f"Image de {len(image)} octets reçue, début de la prédiction...")
         try:
             data = model.predict_from_memory(image)
+
+            fen = data.board_fen()
+            logging.info("Envoi du FEN à l'appareil photo...")
+            photo_taker_socket.send(b"BOFEN")
+            photo_taker_socket.send(len(fen).to_bytes(SIZE_OF_INT, "little", signed=True))
+            photo_taker_socket.send(fen.encode())
+
             move = best_move.get_best_move(data)
             if move is None:
                 logging.info("Échec lors de la sélection du meilleur move via StockFish. Envoi d'un message d'erreur au vibreur...")
