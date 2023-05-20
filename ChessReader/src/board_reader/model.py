@@ -30,7 +30,9 @@ def clear_pieces_directory() -> None:
             item.unlink()
     logging.info(f"Suppression du contenu du dossier {OUTPUT_DIR} réalisé avec succès.")
 
-def process_chessboard_image(chessboard_image: pathlib.Path, board: chess.Board, rotation_factor: int = 0):
+def _process_chessboard_image(chessboard_image: pathlib.Path, board: chess.Board, rotation_factor: int = 0):
+    """Sauvegarde chaque case d'une photo d'échiquier dans le dossier approprié."""
+
     try:
         chessboard_image_prepreoccesed_data = preprocess.preprocess_chessboard_from_file(chessboard_image, rotation_factor)
 
@@ -75,15 +77,17 @@ def build_dataset_tree_structure() -> None:
         board = game.board()
 
         for move, chessboard_image in zip(game.mainline_moves(), natsort.natsorted(game_dir.glob("left/*.jpg"))):
-            process_chessboard_image(chessboard_image, board, 1)
+            _process_chessboard_image(chessboard_image, board, 1)
             board.push(move)
         board.reset()
         for move, chessboard_image in zip(game.mainline_moves(), natsort.natsorted(game_dir.glob("bottom/*.jpg"))):
-            process_chessboard_image(chessboard_image, board, 2)
+            _process_chessboard_image(chessboard_image, board, 2)
             board.push(move)
         board.reset()
 
 def train_model(epochs: int = 10) -> None:
+    """Entraîne le modèle avec les images de jeu dans 'neural-network-dataset' le nombre de fois indiqué."""
+
     train_datagen = tensorflow.keras.utils.image_dataset_from_directory(
         OUTPUT_DIR.resolve().as_posix(),
         class_names=CLASSES,
@@ -128,13 +132,19 @@ def train_model(epochs: int = 10) -> None:
 
     model.save(MODEL_LOCATION)
 
-def predict_from_file(image_file: pathlib.Path) -> list:
+def predict_from_file(image_file: pathlib.Path) -> chess.Board:
+    """Renvoie la réprésentation digitiale d'un échiquier à partir d'un fichier image."""
+
     return _predict(preprocess.preprocess_chessboard_from_file(image_file))
 
-def predict_from_memory(image: bytes) -> list:
+def predict_from_memory(image: bytes) -> chess.Board:
+    """Renvoie la réprésentation digitiale d'un échiquier à partir d'une image en mémoire."""
+
     return _predict(preprocess.preprocess_chessboard_from_memory(image))
 
 def _predict(preprocessed_data: list) -> chess.Board:
+    """Renvoie la réprésentation digitiale d'un échiquier à partir d'une liste de données prétraitées."""
+
     model = keras.models.load_model(MODEL_LOCATION)
     items = []
     for index, item in enumerate(preprocessed_data):
@@ -148,14 +158,10 @@ def _predict(preprocessed_data: list) -> chess.Board:
 
         logging.info(f"{index + 1}. Cette image appartient probablement à la classe {CLASSES[numpy.argmax(score)]} avec {100 * numpy.max(score):.2f}% de confiance.")
         items.append(CLASSES[numpy.argmax(score)])
-        preprocess.show_image(image)
+        # preprocess.show_image(image)
 
     logging.info(items)
     board = chess.Board()
     for index, item in enumerate(items):
-        board.set_piece_at(index, chess.Piece.from_symbol(item))
+        board.set_piece_at(index, chess.Piece.from_symbol(item) if item != "empty" else None)
     return board
-
-def build_and_train():
-    build_dataset_tree_structure()
-    train_model()

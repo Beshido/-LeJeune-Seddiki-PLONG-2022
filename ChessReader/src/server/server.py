@@ -54,6 +54,8 @@ class MyServer(http.server.BaseHTTPRequestHandler):
 
 
 def start(port: int = 8080) -> None:
+    """Lance le serveur web au port indiqué."""
+
     webServer = http.server.HTTPServer((HOST, port), MyServer)
     logging.info(f"Le serveur a été lancé et est accessible via l'adresse {socket.gethostbyname(socket.gethostname())} au port {port}. Pour arrêter le serveur, appuyez sur Ctrl+C.")
 
