@@ -8,6 +8,8 @@ import com.android.example.cameraxbasic.databinding.VibratorActivityBinding
 import java.net.ConnectException
 import java.net.Socket
 import kotlin.concurrent.thread
+import android.content.Context
+import android.os.Vibrator
 
 class VibratorActivity: AppCompatActivity() {
 
@@ -21,6 +23,31 @@ class VibratorActivity: AppCompatActivity() {
 
         preferences = getSharedPreferences("myPrefs", MODE_PRIVATE)
         setupSocket()
+    }
+
+    private fun chessToVibrate(context: Context, string: String) {
+        val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        val lettres = "abcdefgh"
+
+        for (i in string.indices) {
+            for (j in 0 until 8) {
+                if (i % 2 == 0 && lettres[j] == string[i]) {
+                    for (k in 0 until j) {
+                        vibrator.vibrate(400)
+                    }
+                    Thread.sleep(250)
+                }
+                else if (i % 2 != 0 && j == string[i].toString().toIntOrNull()) {
+                    for (k in 0 until j) {
+                        vibrator.vibrate(400)
+                    }
+                    Thread.sleep(250)
+                }
+                else if (i == 2) {
+                    Thread.sleep(1000)
+                }
+            }
+        }
     }
 
     private fun setupSocket() {
