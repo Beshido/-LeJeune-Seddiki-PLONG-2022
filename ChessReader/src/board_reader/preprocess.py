@@ -100,10 +100,10 @@ def get_cases_coordinates(image: cv2.Mat) -> list:
     """Renvoie une liste de coordonnées de cases d'échiquier via la méthode de findChessboardCornersSB de OpenCV. Efficace pour les images avec une vue de haut."""
 
     image_bw = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    ret, corners = cv2.findChessboardCorners(image_bw, CHESSBOARD_SIZE, flags=cv2.CALIB_CB_ADAPTIVE_THRESH + cv2.CALIB_CB_NORMALIZE_IMAGE)
+    ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE, flags=cv2.CALIB_CB_NORMALIZE_IMAGE + cv2.CALIB_CB_EXHAUSTIVE + cv2.CALIB_CB_ACCURACY)
     if not ret:
-        logging.info("Echec de la reconnaissance de l'échiquier avec la méthode findChessboardCorners. Tentative avec la méthode findChessboardCornersSB...")
-        ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE, flags=cv2.CALIB_CB_NORMALIZE_IMAGE + cv2.CALIB_CB_EXHAUSTIVE + cv2.CALIB_CB_ACCURACY)
+        logging.info("Echec de la reconnaissance de l'échiquier avec la méthode findChessboardCornersSB. Tentative avec la méthode findChessboardCorners...")
+        ret, corners = cv2.findChessboardCorners(image_bw, CHESSBOARD_SIZE, flags=cv2.CALIB_CB_ADAPTIVE_THRESH + cv2.CALIB_CB_NORMALIZE_IMAGE)
         if not ret:
             raise ValueError(f"OpenCV2 n'a pas réussi à trouver un pattern d'échiquier de {CHESSBOARD_SIZE}.")
 
