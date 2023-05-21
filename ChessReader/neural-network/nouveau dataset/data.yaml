@@ -1,0 +1,6 @@
+
+train: ../chess/train/images
+val: ../chess/valid/images
+
+nc: 13
+names: ['error', 'blk-bish', 'blk-kng', 'blk-kngt', 'blk-pwn', 'blk-qn', 'blk-rk', 'wt-bish', 'wt-kng', 'wt-kngt', 'wt-pwn', 'wt-qn', 'wt-rk']

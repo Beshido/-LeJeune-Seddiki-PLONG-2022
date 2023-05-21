@@ -4,10 +4,17 @@ logging.basicConfig(level = logging.INFO)
 import pathlib
 import numpy
 
-CHESSBOARD_SIZE = (7, 7) # taille intérieure d'un échiquier
+CHESSBOARD_SIZE = (7, 7)
+"""Taille intérieure d'un échiquier."""
+
 HIST_THRESHOLD = 3
+"""Seuil de l'histogramme pour déterminer si une case est vide ou non."""
+
 CROP_VALUE = 10
-MIN_PEAKS = 10 # nombre minimum de peak dans l'histogramme pour que la case soit considérée comme remplie
+"""Valeur de rognage de l'image."""
+
+MIN_PEAKS = 10
+"""Nombre minimum de peak dans l'histogramme pour que la case soit considérée comme contenant une case."""
 
 class Point:
     def __init__(self, x: int, y: int) -> None:
@@ -63,7 +70,9 @@ class Coordinates:
     def __repr__(self) -> str:
         return str(self)
 
-def show_image(image: cv2.Mat) -> None:
+def _show_image(image: cv2.Mat) -> None:
+    """Affiche une image dans une fenêtre. Appuyer sur une touche pour continuer le programme. Appuyer sur 'q' pour terminer le programme."""
+
     if image is None: return
 
     cv2.imshow("show_image", image)
@@ -75,6 +84,7 @@ def show_image(image: cv2.Mat) -> None:
 
 def crop_to_square(image: cv2.Mat) -> cv2.Mat:
     """Transforme une image en la rognant sur le centre, afin de supprimer en partie le background de l'image."""
+
     height = image.shape[0]
     width = image.shape[1]
 
@@ -88,16 +98,14 @@ def crop_to_square(image: cv2.Mat) -> cv2.Mat:
 
 def get_cases_coordinates(image: cv2.Mat) -> list:
     """Renvoie une liste de coordonnées de cases d'échiquier via la méthode de findChessboardCornersSB de OpenCV. Efficace pour les images avec une vue de haut."""
+
     image_bw = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    ret, corners = cv2.findChessboardCorners(image_bw, CHESSBOARD_SIZE)
+    ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE, flags=cv2.CALIB_CB_NORMALIZE_IMAGE + cv2.CALIB_CB_EXHAUSTIVE + cv2.CALIB_CB_ACCURACY)
     if not ret:
-        ret, corners = cv2.findChessboardCorners(image_bw, CHESSBOARD_SIZE, flags=cv2.CALIB_CB_EXHAUSTIVE)
+        logging.info("Echec de la reconnaissance de l'échiquier avec la méthode findChessboardCornersSB. Tentative avec la méthode findChessboardCorners...")
+        ret, corners = cv2.findChessboardCorners(image_bw, CHESSBOARD_SIZE, flags=cv2.CALIB_CB_ADAPTIVE_THRESH + cv2.CALIB_CB_NORMALIZE_IMAGE)
         if not ret:
-            ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE)
-            if not ret:
-                ret, corners = cv2.findChessboardCornersSB(image_bw, CHESSBOARD_SIZE, flags=cv2.CALIB_CB_EXHAUSTIVE)
-                if not ret:
-                    raise ValueError(f"OpenCV2 was unable to find {CHESSBOARD_SIZE} chessboard-like patterns.")
+            raise ValueError(f"OpenCV2 n'a pas réussi à trouver un pattern d'échiquier de {CHESSBOARD_SIZE}.")
 
     coordinates = [[]]
     for i in range(len(corners) - 8):
@@ -142,6 +150,7 @@ def get_cases_coordinates(image: cv2.Mat) -> list:
 
 def get_cases_coordinates_harris(image: cv2.Mat) -> list:
     """Renvoie une liste de liste de coordonnées de cases d'échiquier via la méthode de Harris de OpenCV."""
+
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     gray = numpy.float32(gray)
     dst = cv2.cornerHarris(gray, 2, 3, 0.04)
@@ -155,8 +164,9 @@ def get_cases_coordinates_harris(image: cv2.Mat) -> list:
 
 def get_chessboard_outline(image: cv2.Mat) -> list:
     """Renvoie une liste contenant les coordonnées des contours de l'image d'un échiquier."""
+
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    retval, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 9))
     morph = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
@@ -180,6 +190,7 @@ def get_chessboard_outline(image: cv2.Mat) -> list:
 
 def wrap_image(image: cv2.Mat, coordinates: list) -> cv2.Mat:
     """Distords l'image pour que celle-ci ne contienne uniquement les cases du plateau de jeu."""
+
     height = image.shape[0]
     width = image.shape[1]
     length = int(height) if height > width else int(width)
@@ -204,6 +215,7 @@ def wrap_image(image: cv2.Mat, coordinates: list) -> cv2.Mat:
 
 def get_cases_color(image: cv2.Mat) -> list:
     """Renvoie une liste de liste de couleurs de cases d'échiquier. True pour blanc, False pour noir."""
+
     bw_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     height, width = bw_image.shape[0] // 8, bw_image.shape[1] // 8
     blur = cv2.GaussianBlur(bw_image, (5, 5), 0)
@@ -245,6 +257,8 @@ def check_cases_content(image: cv2.Mat) -> list:
     """Renvoie une liste de liste de booléen représentant si une case est vide ou pas."""
 
     def get_number_peaks(hist: cv2.Mat) -> int:
+        """Renvoie le nombre de peaks dans l'histogramme."""
+    
         n = 0
         for i in range(1, len(hist) - 1):
             value = hist[i][0] - HIST_THRESHOLD
@@ -296,7 +310,6 @@ def preprocess_chessboard_from_memory(image: bytes, rotation_factor: int = 0) ->
     image = cv2.imdecode(image, cv2.IMREAD_COLOR)
     if image is None:
         raise ValueError(f"Le buffer de l'image est illégal.")
-    show_image(image)
     logging.info(f"L'image en mémoire a été chargée avec succès.")
     
     return _preprocess_chessboard(image, rotation_factor)
@@ -306,10 +319,15 @@ def _preprocess_chessboard(image: cv2.Mat, rotation_factor: int = 0) -> list:
 
     for _ in range(rotation_factor):
         image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+    if rotation_factor > 0:
+        logging.info(f"Rotation de l'image de {rotation_factor * 90} degrés réalisée avec succès.")
     image = cv2.flip(image, 1)
     coordinates = get_cases_coordinates(image)
+    logging.info(f"Récupération des coordonnées des cases de l'échiquier réalisée avec succès.")
     warped_image = wrap_image(image, coordinates)
+    logging.info(f"Distorsion de l'image réalisée avec succès.")
     colors = get_cases_color(warped_image)
+    logging.info(f"Récupération des couleurs des cases de l'échiquier réalisée avec succès.")
     # pieces = check_cases_content(warped_image)
     output = []
     for coordinate, case_color in zip((coordinates), colors):
