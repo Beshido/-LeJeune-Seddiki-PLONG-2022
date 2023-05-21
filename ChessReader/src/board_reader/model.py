@@ -131,6 +131,18 @@ def train_model(epochs: int = 10) -> None:
     )
 
     model.save(MODEL_LOCATION)
+    
+#def newTrainModel (epochs: int = 10) -> None:
+#    
+#    train_newdata = tf.keras.applications.vgg19.VGG19(
+#        include_top=True,
+#        weights='imagenet',
+#        input_tensor=None,
+#        input_shape=None, #les images doivent être de taille 224x224, donc nécessité de resize
+#        pooling=None,
+#        classes=13,
+#        classifier_activation='softmax'
+#)
 
 def predict_from_file(image_file: pathlib.Path) -> chess.Board:
     """Renvoie la réprésentation digitiale d'un échiquier à partir d'un fichier image."""
