@@ -1,4 +1,4 @@
-package com.android.example.cameraxbasic
+package com.chessreader.plong.application
 
 import android.content.Intent
 import android.os.Bundle

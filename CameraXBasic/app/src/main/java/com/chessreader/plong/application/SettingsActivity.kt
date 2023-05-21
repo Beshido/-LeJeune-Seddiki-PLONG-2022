@@ -1,21 +1,21 @@
-package com.android.example.cameraxbasic
+package com.chessreader.plong.application
 
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.android.example.cameraxbasic.databinding.FragmentSettingsBinding
+import com.android.example.cameraxbasic.databinding.SettingsBinding
 
 /** Fragment used to present the user with a gallery of photos taken */
 class SettingsActivity : AppCompatActivity() {
 
-    private lateinit var binding: FragmentSettingsBinding
+    private lateinit var binding: SettingsBinding
     private lateinit var sharedPreferences: SharedPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = FragmentSettingsBinding.inflate(layoutInflater)
+        binding = SettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         // get shared preferences
