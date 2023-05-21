@@ -78,4 +78,9 @@
         vestibulum. Fusce dictum libero quis erat maximus, vitae volutpat diam dignissim.
     </string>
     <string name="settings">Paramètres</string>
+    <string name="start_camera">Lancer la caméra</string>
+    <string name="fen_prompt">Entrer le FEN corrigé...</string>
+    <string name="fen_send">Envoyer le FEN corrigé</string>
+    <string name="reconnect_socket">Se reconnecter à la socket</string>
+    <string name="connect_socket_status">Statut de la connexion</string>
 </resources>
