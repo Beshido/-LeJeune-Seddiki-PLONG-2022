@@ -1,4 +1,3 @@
-import src.board_reader.preprocess as preprocess
 import chess.pgn
 import cv2
 import keras
@@ -9,14 +8,31 @@ import natsort
 import numpy
 import pathlib
 import shutil
+import src.board_reader.preprocess as preprocess
 import tensorflow
 
-CLASSES = [ "b", "empty", "k", "n", "p", "q", "r" ]
+COLOR_SEPARATION = False
+"""Indique si les pièces doivent être séparées par couleur ou non."""
+
+CLASSES_TYPE_SEPARATED = [ "b", "empty", "k", "n", "p", "q", "r" ]
+"""Classes de pièces d'échecs utilisées pour l'entraînement du modèle."""
+
+CLASSES_COLOR_SEPARATED = [ "b", "B", "empty", "k", "K", "n", "N", "p", "P", "q", "Q", "r", "R" ]
+"""Classes de pièces d'échecs utilisées pour la séparation des pièces par couleur."""
+
+CLASSES = CLASSES_COLOR_SEPARATED if COLOR_SEPARATION else CLASSES_TYPE_SEPARATED
 
 BASE_DIR = pathlib.Path("neural-network/")
+"""Chemin vers le dossier du module neural-network du projet."""
+
 DATASET_DIR = pathlib.Path(BASE_DIR / "dataset/")
+"""Chemin vers le dossier du dataset du module neural-network du projet."""
+
 OUTPUT_DIR = pathlib.Path(DATASET_DIR / "pieces/")
+"""Chemin vers le dossier pieces du module neural-network du projet."""
+
 MODEL_LOCATION = pathlib.Path(BASE_DIR / "model/")
+"""Chemin vers le modèle du module neural-network du projet."""
 
 def clear_pieces_directory() -> None:
     """Nettoie le dossier OUTPUT de son contenu."""
@@ -43,7 +59,11 @@ def _process_chessboard_image(chessboard_image: pathlib.Path, board: chess.Board
     for i in range(64):
         piece = board.piece_at(i)
 
-        dir_name = f"{piece.symbol().lower() if piece is not None else 'empty'}/"
+        if piece:
+            piece_name = piece.symbol() if COLOR_SEPARATION else piece.symbol().lower()
+        else:
+            piece_name = "empty"
+        dir_name = f"{piece_name}/"
         filename = f"{chessboard_image.stem}_{(i + 1):02d}{chessboard_image.suffix}"
         save_location = pathlib.Path(OUTPUT_DIR, dir_name, filename)
         save_location.parent.mkdir(parents=True, exist_ok=True)
@@ -167,10 +187,14 @@ def _predict(preprocessed_data: list) -> chess.Board:
 
         predictions = model.predict(image_array)
         score = tensorflow.nn.softmax(predictions[0])
+        guessed_class = CLASSES[numpy.argmax(score)]
 
-        logging.info(f"{index + 1}. Cette image appartient probablement à la classe {CLASSES[numpy.argmax(score)]} avec {100 * numpy.max(score):.2f}% de confiance.")
-        items.append(CLASSES[numpy.argmax(score)])
-        # preprocess.show_image(image)
+        if not COLOR_SEPARATION and guessed_class != "empty":
+            is_color = item[2]
+            if is_color:
+                guessed_class = guessed_class.upper()
+        logging.info(f"{index + 1}. Cette image appartient probablement à la classe {guessed_class} avec {100 * numpy.max(score):.2f}% de confiance.")
+        items.append(guessed_class)
 
     logging.info(items)
     board = chess.Board()

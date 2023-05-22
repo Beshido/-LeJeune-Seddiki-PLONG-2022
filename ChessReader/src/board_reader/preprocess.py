@@ -44,16 +44,16 @@ class Coordinates:
         self.lowerright = lowerright
 
     def minX1(self) -> int:
-        return max(self.upperleft.x, self.lowerleft.x) + CROP_VALUE
+        return max(self.upperleft.x, self.lowerleft.x)
     
     def minX2(self) -> int:
-        return min(self.upperright.x, self.lowerright.x) - CROP_VALUE
+        return min(self.upperright.x, self.lowerright.x)
 
     def minY1(self) -> int:
-        return max(self.upperleft.y, self.upperright.y) + CROP_VALUE
+        return max(self.upperleft.y, self.upperright.y)
 
     def minY2(self) -> int:
-        return min(self.lowerleft.y, self.lowerright.y) - CROP_VALUE
+        return min(self.lowerleft.y, self.lowerright.y)
 
     def get_image(self, image: cv2.Mat) -> cv2.Mat:
         return image[self.minY1():self.minY2(), self.minX1():self.minX2()]
@@ -220,26 +220,21 @@ def get_cases_color(image: cv2.Mat) -> list:
     height, width = bw_image.shape[0] // 8, bw_image.shape[1] // 8
     blur = cv2.GaussianBlur(bw_image, (5, 5), 0)
     _, image_binary = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    x, y = 0, 0
     lowest_color_coordinates = (None, None)
     lowest_color_content = None
-    for x_index in range(8):
-        for y_index in range(8):
+    for x in range(8):
+        for y in range(8):
             coordinate = Coordinates(
-                Point(x, y), 
-                Point(x + width, y), 
-                Point(x, y + height), 
-                Point(x + width, y + height)
+                Point(x * width, y * height), 
+                Point(x * width + width, y * height), 
+                Point(x * width, y * height + height), 
+                Point(x * width + width, y * height + height)
             )
             average_color = numpy.average(coordinate.get_image(image_binary))
             if lowest_color_content is None or average_color < lowest_color_content:
                 lowest_color_content = average_color
                 color = average_color > 255 // 2
-                lowest_color_coordinates = (x_index, y_index)
-
-            y += height
-        x += width
-        y = 0
+                lowest_color_coordinates = (x, y)
 
     if lowest_color_content == 255:
         raise ValueError("Couldn't get the chessboard cases color.")
@@ -293,6 +288,56 @@ def check_cases_content(image: cv2.Mat) -> list:
 
     return board
 
+def get_pieces_color(image: cv2.Mat) -> list:
+    """Renvoie une liste de booléen renvoyant True si la couleur de la pièce est l'opposé de la couleur de la case."""
+
+    height, width = image.shape[0] // 8, image.shape[1] // 8
+    blur = cv2.GaussianBlur(image, (5,5), 0)
+    _, img_binary = cv2.threshold(blur, 130, 255, cv2.THRESH_BINARY)
+    img_binary_inverted = cv2.bitwise_not(img_binary)
+
+    morph_kernel = numpy.ones((15, 15), numpy.uint8)
+    output = cv2.morphologyEx(img_binary_inverted, cv2.MORPH_CLOSE, morph_kernel)
+    pieces_color = []
+    for x in range(8):
+        for y in range(8):
+            coordinate = Coordinates(
+                Point(x * width, y * height), 
+                Point(x * width + width, y * height), 
+                Point(x * width, y * height + height), 
+                Point(x * width + width, y * height + height)
+            )
+            average_color = numpy.average(coordinate.get_image(output))
+            b = average_color >= 255 - CROP_VALUE or average_color <= 0 + CROP_VALUE
+            pieces_color.append(b)
+    return pieces_color
+
+def _preprocess_chessboard(image: cv2.Mat, rotation_factor: int = 0) -> list:
+    """Méthode maîtresse qui convertit une image en échiquier digital. Renvoie une exception ValueError si l'image n'est pas valide ou si OpenCV échoue la reconnaissance de l'échiquier. Format de retour : [ (image, case_color, piece_color), ... ]"""
+
+    for _ in range(rotation_factor):
+        image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+    if rotation_factor > 0:
+        logging.info(f"Rotation de l'image de {rotation_factor * 90} degrés réalisée avec succès.")
+    image = cv2.flip(image, 1)
+    coordinates = get_cases_coordinates(image)
+    logging.info(f"Récupération des coordonnées des cases de l'échiquier réalisée avec succès.")
+    warped_image = wrap_image(image, coordinates)
+    logging.info(f"Distorsion de l'image réalisée avec succès.")
+    colors = get_cases_color(warped_image)
+    logging.info(f"Récupération des couleurs des cases de l'échiquier réalisée avec succès.")
+    pieces_color = get_pieces_color(warped_image)
+    logging.info(f"Récupération des couleurs des pièces de l'échiquier réalisée avec succès.")
+    # pieces = check_cases_content(warped_image)
+    output = []
+    for coordinate, case_color, piece_color in zip((coordinates), colors, pieces_color):
+        output.append((coordinate.get_image(image), case_color, piece_color))
+        _show_image(coordinate.get_image(image))
+
+    assert len(output) == 64
+    logging.info(f"Succès du prétraitement de l'image.")
+    return output
+
 def preprocess_chessboard_from_file(image_path: pathlib.Path, rotation_factor: int = 0) -> list:
     """Méthode maîtresse qui convertit un fichier en échiquier digital. Renvoie une exception ValueError si l'image n'est pas valide ou si OpenCV échoue la reconnaissance de l'échiquier."""
 
@@ -313,26 +358,3 @@ def preprocess_chessboard_from_memory(image: bytes, rotation_factor: int = 0) ->
     logging.info(f"L'image en mémoire a été chargée avec succès.")
     
     return _preprocess_chessboard(image, rotation_factor)
-
-def _preprocess_chessboard(image: cv2.Mat, rotation_factor: int = 0) -> list:
-    """Méthode maîtresse qui convertit une image en échiquier digital. Renvoie une exception ValueError si l'image n'est pas valide ou si OpenCV échoue la reconnaissance de l'échiquier."""
-
-    for _ in range(rotation_factor):
-        image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
-    if rotation_factor > 0:
-        logging.info(f"Rotation de l'image de {rotation_factor * 90} degrés réalisée avec succès.")
-    image = cv2.flip(image, 1)
-    coordinates = get_cases_coordinates(image)
-    logging.info(f"Récupération des coordonnées des cases de l'échiquier réalisée avec succès.")
-    warped_image = wrap_image(image, coordinates)
-    logging.info(f"Distorsion de l'image réalisée avec succès.")
-    colors = get_cases_color(warped_image)
-    logging.info(f"Récupération des couleurs des cases de l'échiquier réalisée avec succès.")
-    # pieces = check_cases_content(warped_image)
-    output = []
-    for coordinate, case_color in zip((coordinates), colors):
-        output.append((coordinate.get_image(image), case_color))
-
-    assert len(output) == 64
-    logging.info(f"Succès du prétraitement de l'image.")
-    return output

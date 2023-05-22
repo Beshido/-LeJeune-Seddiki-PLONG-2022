@@ -17,6 +17,18 @@ PHOTO_HEADER = "PHOTO"
 VIBRATOR_HEADER = "VIBRA"
 """Header identifiant envoyé par l'application vibreuse."""
 
+PICTURE_HEADER = "PICTU"
+"""Header identifiant envoyé par l'application photo pour indiquer qu'elle envoie une photo."""
+
+SEND_FEN_HEADER = "BOFEN"
+"""Header identifiant envoyé par le serveur pour indiquer qu'elle envoie le FEN."""
+
+RECEIVE_FIXED_FEN_HEADER = "FENSI"
+"""Header identifiant envoyé par l'application photo pour indiquer qu'elle envoie le FEN corrigé par l'utilisateur."""
+
+SEND_VIBRATOR_FEN_HEADER = "FENVI"
+"""Header identifiant envoyé par le serveur pour indiquer qu'elle envoie le meilleur move au vibreur."""
+
 SIZE_OF_INT = 4
 """Taille d'un entier en octets."""
 
@@ -27,7 +39,7 @@ def _launch(server_socket: socket.socket) -> None:
     photo_taker_socket, vibrator_socket = None, None
     while photo_taker_socket is None or vibrator_socket is None:
         current_socket, _ = server_socket.accept()
-        message = current_socket.recv(SIZE_OF_HEADER).decode("utf-8")
+        message = current_socket.recv(SIZE_OF_HEADER).decode()
         if message == PHOTO_HEADER:
             photo_taker_socket = current_socket
             logging.info("Application photo connectée.")
@@ -40,6 +52,10 @@ def _launch(server_socket: socket.socket) -> None:
     logging.info("Les deux applications sont connectées.")
     while True:
         logging.info("Attente de l'envoi d'une photo...")
+        message = photo_taker_socket.recv(SIZE_OF_HEADER).decode()
+        if message != PICTURE_HEADER:
+            logging.info(f"Header inconnu reçu : {message}. Retentative...")
+            continue
         image_size = int.from_bytes(photo_taker_socket.recv(SIZE_OF_INT), "little", signed=True)
         if (image_size <= 0):
             logging.info("Taille de l'image invalide. Recherche de nouveaux candidats.")
@@ -49,27 +65,39 @@ def _launch(server_socket: socket.socket) -> None:
         logging.info(f"Image de {len(image)} octets reçue, début de la prédiction...")
         try:
             data = model.predict_from_memory(image)
-
-            fen = data.board_fen()
-            logging.info("Envoi du FEN à l'appareil photo...")
-            photo_taker_socket.send(b"BOFEN")
-            photo_taker_socket.send(len(fen).to_bytes(SIZE_OF_INT, "little", signed=True))
-            photo_taker_socket.send(fen.encode())
-
-            move = best_move.get_best_move(data)
-            if move is None:
-                logging.info("Échec lors de la sélection du meilleur move via StockFish. Envoi d'un message d'erreur au vibreur...")
-                vibrator_socket.send(b"ERROR")
-            else:
-                logging.info(f"Prediction terminée. Meilleur move sélectionné: {move}. Envoi au vibrateur...")
-                vibrator_socket.send(move)
-            logging.info("Données envoyées au vibrateur.")
-
         except ValueError as e:
             logging.info(e)
-            logging.info("Échec de la prédiction. Envoi d'un message d'erreur à l'appareil photo...")
-            photo_taker_socket.send(b"FIXME")
-            logging.info("Message d'erreur envoyé à l'appareil photo.")
+            logging.info("Échec de la prédiction. Rententative...")
+            continue
+        
+        fen = data.board_fen()
+        logging.info("Envoi du FEN à corriger à l'appareil photo...")
+        photo_taker_socket.send(SEND_FEN_HEADER.encode())
+        photo_taker_socket.send(len(fen).to_bytes(SIZE_OF_INT, "little", signed=True))
+        photo_taker_socket.send(fen.encode())
+
+        message = photo_taker_socket.recv(SIZE_OF_HEADER).decode()
+        if message == RECEIVE_FIXED_FEN_HEADER:
+            logging.info("Reception du FEN corrigé de l'appareil photo...")
+            fen_size = int.from_bytes(photo_taker_socket.recv(SIZE_OF_INT), "little", signed=True)
+            fen = photo_taker_socket.recv(fen_size, socket.MSG_WAITALL).decode()
+            logging.info(f"FEN corrigé reçu : {fen}")
+        else:
+            logging.info("Header inconnu reçu. Retentative...")
+            continue
+
+        move = best_move.get_best_move_from_fen(fen)
+        if move is not None:
+            logging.info(f"Prediction terminée. Meilleur move sélectionné: {move}. Envoi au vibrateur...")
+            move_size = len(move.uci())
+            vibrator_socket.send(SEND_VIBRATOR_FEN_HEADER.encode())
+            vibrator_socket.send(move_size.to_bytes(SIZE_OF_INT, "little", signed=True))
+            vibrator_socket.send(move.uci().encode())
+            logging.info("Données envoyées au vibrateur.")
+        else:
+            logging.info("Échec lors de la sélection du meilleur move via StockFish. Rentattive...")
+            continue
+
     photo_taker_socket.close()
     vibrator_socket.close()
     logging.info("Socket photo et vibreur fermés.")

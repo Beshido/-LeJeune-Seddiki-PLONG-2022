@@ -9,6 +9,11 @@ pip install -r requirements.txt # télécharge et installe les dépendances de c
 python3 -m unittest -v
 ```
 
+# Lancer la documentation
+```bash
+python -m pydoc -p {port}
+```
+
 # Version de Python
 Python 3.5, 3.6 ou 3.7 pour que Tensorflow fonctionne avec DirectML.
 
