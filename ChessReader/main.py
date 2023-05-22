@@ -18,6 +18,7 @@ if __name__ == "__main__":
     parser.add_argument("--server", type=int, help="Lance le serveur au port indiqué.")
     parser.add_argument("--socket", type=int, help="Lance le serveur socket au port indiqué.")
     parser.add_argument("--preprocess", type=pathlib.Path, help="Affiche le résultat du pré-traitements de l'image indiquée.")
+    parser.add_argument("--fen", type=pathlib.Path, help="Affiche le FEN d'une image d'échiquier via machine learning.")
     args = parser.parse_args()
 
     if len(sys.argv) <= 1:
@@ -40,3 +41,9 @@ if __name__ == "__main__":
             logging.info(f"Prétraitement réussi. Affichage du résultat : {pprint.pformat(data)}")
         except ValueError as e:
             logging.info(f"Échec du prétraitement : {e}")
+    elif args.fen is not None:
+        try:
+            data = model.predict_from_file(args.fen)
+            logging.info(f"Prédiction réussie. Affichage du résultat : {data.board_fen()}")
+        except ValueError as e:
+            logging.info(f"Échec de la prédiction : {e}")

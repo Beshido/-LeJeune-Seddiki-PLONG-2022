@@ -83,7 +83,7 @@ def build_dataset_tree_structure() -> None:
     """Coupe les images de toutes les parties d'échiquiers pour que seules les pièces soient visibles et soient dans le dossier approprié pour la construction de l'objet Dataset."""
 
     clear_pieces_directory()
-    for image_file in ANGLED_DIR.glob("*.txt"):
+    """ for image_file in ANGLED_DIR.glob("*.txt"):
         if image_file.is_dir():
             continue
 
@@ -114,7 +114,7 @@ def build_dataset_tree_structure() -> None:
                 fen = im_file.readline()
                 board = chess.Board(fen)
                 data = preprocess.preprocess_with_coordinates(image, parsed_coordinates, 1)
-                _process_chessboard_image(image, board, data)
+                _process_chessboard_image(image, board, data) """
     for game_dir in TOPVIEW_DIR.iterdir():
         if not game_dir.is_dir():
             continue
@@ -168,6 +168,7 @@ def train_model(epochs: int = 10) -> None:
 
     try:
         model = keras.models.load_model(MODEL_LOCATION)
+        logging.info("Modèle chargé avec succès.")
 
     except IOError:
         model = keras.models.Sequential([

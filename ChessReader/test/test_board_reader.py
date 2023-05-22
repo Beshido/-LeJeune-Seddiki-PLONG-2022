@@ -2,7 +2,6 @@ import cv2, unittest
 from src.board_reader.preprocess import _get_cases_coordinates, _preprocess_chessboard
 
 def checkboard_test(chessboard: list, paths: list) -> bool:
-    
     return True
 
 class TestBoardReader(unittest.TestCase):
