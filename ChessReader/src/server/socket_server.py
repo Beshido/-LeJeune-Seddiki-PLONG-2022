@@ -102,6 +102,44 @@ def _launch(server_socket: socket.socket) -> None:
     vibrator_socket.close()
     logging.info("Socket photo et vibreur fermés.")
 
+def _test_server(server_socket: socket.socket) -> None:
+    """Boucle de serveur rapide pour tester rapidement le prétraitement des images."""
+
+    logging.info("Attente de la connexion...")
+    photo_taker_socket = None
+    while photo_taker_socket is None:
+        current_socket, _ = server_socket.accept()
+        message = current_socket.recv(SIZE_OF_HEADER).decode()
+        if message == PHOTO_HEADER:
+            photo_taker_socket = current_socket
+            logging.info("Application photo connectée.")
+        else:
+            logging.info("Message inconnu reçu: " + message)
+
+    while True:
+        logging.info("Attente de l'envoi d'une photo...")
+        message = photo_taker_socket.recv(SIZE_OF_HEADER).decode()
+        if message != PICTURE_HEADER:
+            logging.info(f"Header inconnu reçu : {message}. Retentative...")
+            continue
+        image_size = int.from_bytes(photo_taker_socket.recv(SIZE_OF_INT), "little", signed=True)
+        if (image_size <= 0):
+            logging.info("Taille de l'image invalide. Recherche de nouveaux candidats.")
+            break
+        logging.info(f"Préparation à la réception d'une image de {image_size} octets...")
+        image = photo_taker_socket.recv(image_size, socket.MSG_WAITALL)
+        logging.info(f"Image de {len(image)} octets reçue, début de la prédiction...")
+        try:
+            data = model.predict_from_memory(image)
+            logging.info(f"Prédiction réussie : {data}")
+        except ValueError as e:
+            logging.info(e)
+            logging.info("Échec de la prédiction. Rententative...")
+            continue
+        
+    photo_taker_socket.close()
+    logging.info("Socket photo fermé.")
+
 def start(port: int = 8080):
     """Lance le serveur socket au port indiqué."""
 
@@ -111,6 +149,7 @@ def start(port: int = 8080):
     try:
         while True:
             _launch(server_socket)
+            # _test_server(server_socket)
     except KeyboardInterrupt:
         logging.info("Fermeture du socket.")
     server_socket.close()

@@ -1,5 +1,5 @@
 import cv2, unittest
-from src.board_reader.preprocess import get_cases_coordinates, _preprocess_chessboard
+from src.board_reader.preprocess import _get_cases_coordinates, _preprocess_chessboard
 
 def checkboard_test(chessboard: list, paths: list) -> bool:
     
@@ -22,7 +22,7 @@ class TestBoardReader(unittest.TestCase):
         ]
         for path in paths:
             try:
-                get_cases_coordinates(cv2.imread(path))
+                _get_cases_coordinates(cv2.imread(path))
             except ValueError:
                 self.fail(f"Chessboard recognition failed for '{path}'")
 

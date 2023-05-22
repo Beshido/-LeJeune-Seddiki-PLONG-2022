@@ -25,13 +25,19 @@ CLASSES = CLASSES_COLOR_SEPARATED if COLOR_SEPARATION else CLASSES_TYPE_SEPARATE
 BASE_DIR = pathlib.Path("neural-network/")
 """Chemin vers le dossier du module neural-network du projet."""
 
-DATASET_DIR = pathlib.Path(BASE_DIR / "dataset/")
+DATASET_DIR = BASE_DIR / "dataset/"
 """Chemin vers le dossier du dataset du module neural-network du projet."""
 
-OUTPUT_DIR = pathlib.Path(DATASET_DIR / "pieces/")
+ANGLED_DIR = DATASET_DIR / "angled/"
+
+EXTERNAL_DIR = DATASET_DIR / "external/"
+
+TOPVIEW_DIR = DATASET_DIR / "topview/"
+
+OUTPUT_DIR = DATASET_DIR / "pieces/"
 """Chemin vers le dossier pieces du module neural-network du projet."""
 
-MODEL_LOCATION = pathlib.Path(BASE_DIR / "model/")
+MODEL_LOCATION = BASE_DIR / "model/"
 """Chemin vers le modèle du module neural-network du projet."""
 
 def clear_pieces_directory() -> None:
@@ -46,15 +52,8 @@ def clear_pieces_directory() -> None:
             item.unlink()
     logging.info(f"Suppression du contenu du dossier {OUTPUT_DIR} réalisé avec succès.")
 
-def _process_chessboard_image(chessboard_image: pathlib.Path, board: chess.Board, rotation_factor: int = 0):
+def _process_chessboard_image(chessboard_image: pathlib.Path, board: chess.Board, preprocessed_data: list):
     """Sauvegarde chaque case d'une photo d'échiquier dans le dossier approprié."""
-
-    try:
-        chessboard_image_prepreoccesed_data = preprocess.preprocess_chessboard_from_file(chessboard_image, rotation_factor)
-
-    except ValueError:
-        logging.info(f"Échec du prétaitement de l'image suivante : {chessboard_image}")
-        return
 
     for i in range(64):
         piece = board.piece_at(i)
@@ -65,11 +64,14 @@ def _process_chessboard_image(chessboard_image: pathlib.Path, board: chess.Board
             piece_name = "empty"
         dir_name = f"{piece_name}/"
         filename = f"{chessboard_image.stem}_{(i + 1):02d}{chessboard_image.suffix}"
-        save_location = pathlib.Path(OUTPUT_DIR, dir_name, filename)
+        save_location = pathlib.Path(OUTPUT_DIR / dir_name, filename)
         save_location.parent.mkdir(parents=True, exist_ok=True)
 
-        cv2.imwrite(save_location.resolve().as_posix(), chessboard_image_prepreoccesed_data[i][0])
-        logging.info(f"{save_location}: {i}/64")
+        try: 
+            cv2.imwrite(save_location.resolve().as_posix(), preprocessed_data[i][0])
+            logging.info(f"{save_location}: {i}/64")
+        except:
+            logging.info(f"Échec de l'écriture de l'image suivante : {save_location}")
         # chessboard_image.unlink()
         # print(
         #     piece if piece is not None else ".",
@@ -81,8 +83,39 @@ def build_dataset_tree_structure() -> None:
     """Coupe les images de toutes les parties d'échiquiers pour que seules les pièces soient visibles et soient dans le dossier approprié pour la construction de l'objet Dataset."""
 
     clear_pieces_directory()
-    
-    for game_dir in DATASET_DIR.iterdir():
+    for image_file in ANGLED_DIR.glob("*.txt"):
+        if image_file.is_dir():
+            continue
+
+        logging.info(f"Lecture du fichier texte suivant : {image_file}")
+        with image_file.open() as im_file:
+            coordinates = im_file.readline()
+            logging.info(coordinates)
+            coordinates = coordinates.split(";")
+            parsed_coordinates = []
+            for i in range(64):
+                if i > 0 and i % 8 == 0:
+                    index = i + 1
+                else:
+                    index = i
+                coordinate = preprocess.Coordinates(
+                    preprocess.Point(int(coordinates[index].split(",")[0]), int(coordinates[index].split(",")[1])),
+                    preprocess.Point(int(coordinates[index + 1].split(",")[0]), int(coordinates[index + 1].split(",")[1])),
+                    preprocess.Point(int(coordinates[index + 9].split(",")[0]), int(coordinates[index + 9].split(",")[1])),
+                    preprocess.Point(int(coordinates[index + 10].split(",")[0]), int(coordinates[index + 10].split(",")[1]))
+                )
+                parsed_coordinates.append(coordinate)
+
+            folder_name = image_file.stem
+            folder = ANGLED_DIR / folder_name
+            for image in natsort.natsorted(folder.glob("*.jpg")):
+                if image.is_dir():
+                    continue
+                fen = im_file.readline()
+                board = chess.Board(fen)
+                data = preprocess.preprocess_with_coordinates(image, parsed_coordinates, 1)
+                _process_chessboard_image(image, board, data)
+    for game_dir in TOPVIEW_DIR.iterdir():
         if not game_dir.is_dir():
             continue
         try:
@@ -96,12 +129,20 @@ def build_dataset_tree_structure() -> None:
             game = chess.pgn.read_game(pgn_file)
         board = game.board()
 
-        for move, chessboard_image in zip(game.mainline_moves(), natsort.natsorted(game_dir.glob("left/*.jpg"))):
-            _process_chessboard_image(chessboard_image, board, 1)
-            board.push(move)
-        board.reset()
+        # for move, chessboard_image in zip(game.mainline_moves(), natsort.natsorted(game_dir.glob("left/*.jpg"))):
+        #     try:
+        #         chessboard_image_prepreoccesed_data = preprocess.preprocess_chessboard_from_file(chessboard_image, 1)
+        #         _process_chessboard_image(chessboard_image, board, chessboard_image_prepreoccesed_data)
+        #     except:
+        #         logging.info(f"Échec du prétaitement de l'image suivante : {chessboard_image}")
+        #     board.push(move)
+        # board.reset()
         for move, chessboard_image in zip(game.mainline_moves(), natsort.natsorted(game_dir.glob("bottom/*.jpg"))):
-            _process_chessboard_image(chessboard_image, board, 2)
+            try:
+                chessboard_image_prepreoccesed_data = preprocess.preprocess_chessboard_from_file(chessboard_image, 2)
+                _process_chessboard_image(chessboard_image, board, chessboard_image_prepreoccesed_data)
+            except:
+                logging.info(f"Échec du prétaitement de l'image suivante : {chessboard_image}")
             board.push(move)
         board.reset()
 

@@ -7,6 +7,14 @@ import urllib.parse
 from src.board_reader import model
 
 HOST = "0.0.0.0"
+"""Adresse IP du serveur web."""
+
+SEND_FEN_HEADER = "BOFEN"
+"""Header identifiant envoyé par le serveur pour indiquer qu'elle envoie le FEN."""
+
+SEND_FAILED_FEN_HEADER = "FAILED"
+"""Header identifiant envoyé par le serveur pour indiquer qu'elle a échoué l'opération."""
+
 
 class MyServer(http.server.BaseHTTPRequestHandler):
     def __init__(self, request: tuple, client_address: tuple, server: socketserver.BaseServer) -> None:
@@ -35,9 +43,6 @@ class MyServer(http.server.BaseHTTPRequestHandler):
             print(f"Requested file does not exist: {self.path}")
 
     def do_POST(self) -> None:
-        request = urllib.parse.urlparse(self.path)
-        query = urllib.parse.parse_qs(request.query)
-        path = request.path if request.path != '/' else "/index.html"
         data = self.rfile.read(int(self.headers["Content-Length"]))
         self.send_response(200)
         self.end_headers()
@@ -46,11 +51,10 @@ class MyServer(http.server.BaseHTTPRequestHandler):
         try:
             data = model.predict_from_memory(data)
             logging.info(f"Prédiction réussie.")
-            self.wfile.write(b"OK")
-            self.wfile.write(data)
+            self.wfile.write(data.board_fen().encode())
         except ValueError:
             logging.info(f"Échec de la prédiction.")
-            self.wfile.write(b"NO")
+            self.wfile.write(SEND_FAILED_FEN_HEADER.encode())
 
 
 def start(port: int = 8080) -> None:
