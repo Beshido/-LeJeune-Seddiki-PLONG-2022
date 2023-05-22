@@ -26,6 +26,7 @@ private const val MOVE_HEADER = "FENVI"
 private const val VIBRATION_LENGTH = 200L
 private const val TIME_BETWEEN_VIBRATION = 400L
 private const val TIME_BETWEEN_SEPARATE_VIBRATION = TIME_BETWEEN_VIBRATION * 2
+private const val FIRST_MIN_LETTER_INDEX = 96
 
 class VibratorActivity: AppCompatActivity() {
 
@@ -62,27 +63,21 @@ class VibratorActivity: AppCompatActivity() {
         }
     }
 
+    /**
+     *
+     */
     private fun chessToVibrate(move: String) {
-        val lettres = "abcdefgh"
-
-        for (i in move.indices) {
-            for (j in 0 until 8) {
-                if (i % 2 == 0 && lettres[j] == move[i]) {
-                    for (k in 0 until j) {
-                        vibrate()
-                    }
-                    Thread.sleep(250)
-                }
-                else if (i % 2 != 0 && j == move[i].toString().toIntOrNull()) {
-                    for (k in 0 until j) {
-                        vibrate()
-                    }
-                    Thread.sleep(250)
-                }
-                else if (i == 2) {
-                    Thread.sleep(1000)
-                }
+        for (letter in move) {
+            val value = if (letter.isLetter()) {
+                letter.code - FIRST_MIN_LETTER_INDEX
+            } else {
+                letter.digitToInt()
             }
+            for (i in 1.. value) {
+                vibrate()
+                Thread.sleep(TIME_BETWEEN_VIBRATION)
+            }
+            Thread.sleep(TIME_BETWEEN_SEPARATE_VIBRATION)
         }
     }
 

@@ -1,5 +1,6 @@
 package com.chessreader.plong.application
 
+import android.R.attr.bitmap
 import android.app.Activity
 import android.content.Intent
 import android.content.SharedPreferences
@@ -7,6 +8,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
@@ -16,9 +18,12 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.android.example.cameraxbasic.databinding.PhotoActivityBinding
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
 import java.net.ConnectException
 import java.net.Socket
 import kotlin.concurrent.thread
+
 
 private const val LICHESS_URL_PREFIX = "https://lichess.org/editor/"
 private const val LICHESS_URL_SUFFIX = "?color="
@@ -26,8 +31,10 @@ private const val PERMISSION_REQUEST_CODE = 200
 private const val HEADER_SIZE = 5
 private const val SIZE_OF_INT = 4
 private const val ID_HEADER = "PHOTO"
+private const val SEND_PHOTO_HEADER = "PICTU"
 private const val RECEIVE_TO_FIX_FEN_HEADER = "BOFEN"
 private const val SEND_FIXED_FEN_HEADER = "FENSI"
+private const val SAVE_PHOTO = true
 
 /**
  * Main entry point into our app. This app follows the single-activity pattern, and all
@@ -163,6 +170,7 @@ class PhotoActivity : AppCompatActivity() {
         val bufferArray = buffer.toByteArray()
         val size = bufferArray.size
         with (socket.getOutputStream()) {
+            write(SEND_PHOTO_HEADER.toByteArray())
             write(size.toByteArray())
             write(bufferArray)
             flush()
@@ -180,10 +188,32 @@ class PhotoActivity : AppCompatActivity() {
 
     private fun hasPermissions(): Boolean {
         return ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+                && (!SAVE_PHOTO || (SAVE_PHOTO && ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+                && ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED))
     }
 
     private fun requestPermissions() {
         ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.CAMERA), PERMISSION_REQUEST_CODE)
+        if (SAVE_PHOTO) {
+            ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE, android.Manifest.permission.WRITE_EXTERNAL_STORAGE), PERMISSION_REQUEST_CODE)
+        }
+    }
+
+    private fun Bitmap.savePicture() {
+        val sdCard = Environment.getExternalStorageDirectory()
+        val dir = File(sdCard.absolutePath + "/YourFolderName")
+        dir.mkdirs()
+        val fileName = String.format("%d.jpg", System.currentTimeMillis())
+        val outFile = File(dir, fileName)
+
+        val outStream = FileOutputStream(outFile)
+        compress(Bitmap.CompressFormat.JPEG, 100, outStream)
+        outStream.flush()
+        outStream.close()
+
+        val intent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+        intent.data = Uri.fromFile(outFile)
+        sendBroadcast(intent)
     }
 
     private fun Int.toByteArray(): ByteArray {
