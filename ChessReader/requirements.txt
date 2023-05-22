@@ -1,8 +1,8 @@
-natsort             # tri naturel des fichiers dataset
-numpy               # nécessaire en concordance avec opencv
-opencv-python       # manipulation d'image
-python-chess        # gestion de l'échiquier	
-stockfish           # IA d'échec
-keras==2.8          # machine learning
-tensorflow==2.8     # machine learning
-protobuf==3.20.*    # fix "TypeError: Descriptors cannot not be created directly."
+natsort          # tri naturel des fichiers dataset
+numpy            # nécessaire en concordance avec opencv
+opencv-python    # manipulation d'image
+python-chess     # gestion de l'échiquier	
+stockfish        # IA d'échec
+keras==2.8       # machine learning
+tensorflow==2.8  # machine learning
+protobuf==3.20.* # fix "TypeError: Descriptors cannot not be created directly."
