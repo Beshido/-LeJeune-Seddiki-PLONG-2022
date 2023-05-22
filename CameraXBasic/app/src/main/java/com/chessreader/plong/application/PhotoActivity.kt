@@ -114,7 +114,7 @@ class PhotoActivity : AppCompatActivity() {
         runOnUiThread {
             Toast.makeText(this, "Socket connecté à $address:$port", Toast.LENGTH_SHORT).show()
         }
-        binding.connectStatus.isChecked = true
+        // binding.connectStatus.isChecked = true
 
         listenSocket()
     }

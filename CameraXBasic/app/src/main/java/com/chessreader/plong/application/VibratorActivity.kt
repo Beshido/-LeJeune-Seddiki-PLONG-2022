@@ -51,16 +51,6 @@ class VibratorActivity: AppCompatActivity() {
         if (!hasPermissions()) {
             requestPermissions()
         }
-
-        thread {
-            for (j in 1..2) {
-                for (i in 1..10) {
-                    vibrate()
-                    Thread.sleep(TIME_BETWEEN_VIBRATION)
-                }
-                Thread.sleep(TIME_BETWEEN_SEPARATE_VIBRATION)
-            }
-        }
     }
 
     /**
@@ -99,7 +89,7 @@ class VibratorActivity: AppCompatActivity() {
         runOnUiThread {
             Toast.makeText(this, "Socket connecté à $address:$port", Toast.LENGTH_SHORT).show()
         }
-        binding.connectStatus.isChecked = true
+        // binding.connectStatus.isChecked = true
 
         listenSocket()
     }
